@@ -1,0 +1,1705 @@
+
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>균균월드 — OPEN WORLD ACTION RPG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#0a0a0d; --void2:#111116; --ink:#eae6da; --ink-dim:#9a9484; --line:#2a2a30;
+    --gyun:#c22a56; --gyun-dim:#5a1526; --record:#4fa39c; --gold:#e0c464;
+    --serif:'Noto Serif KR', serif; --mono:'JetBrains Mono', 'Consolas', monospace;
+  }
+  *{ box-sizing:border-box; user-select:none; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; padding:0; height:100%; background:#000; overflow:hidden; font-family:var(--serif); color:var(--ink); overscroll-behavior:none; }
+  #game{ position:relative; width:100vw; height:100vh; }
+  #world{ position:absolute; inset:0; display:block; background:var(--void); touch-action:none; }
+  #nightOverlay{ position:absolute; inset:0; background:#03030a; opacity:0; pointer-events:none; mix-blend-mode:multiply; }
+  #hud{ position:absolute; inset:0; pointer-events:none; font-family:var(--mono); }
+  #hud .clickable{ pointer-events:auto; }
+
+  /* ---------- Title ---------- */
+  #titleScreen{
+    position:absolute; inset:0; background:var(--void); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; z-index:50; pointer-events:auto; text-align:center; padding:20px;
+    overflow-y:auto;
+  }
+  #titleScreen h1{ font-family:var(--serif); font-size:44px; letter-spacing:0.08em; margin:0 0 6px; }
+  #titleScreen .sub{ font-family:var(--mono); font-size:11px; color:var(--ink-dim); letter-spacing:0.12em; margin-bottom:34px; }
+  #titleScreen input{
+    background:none; border:1px solid var(--line); color:var(--ink); font-family:var(--mono);
+    font-size:15px; padding:12px 16px; width:260px; max-width:80vw; text-align:center; outline:none; margin-bottom:14px;
+  }
+  #titleScreen button{
+    background:var(--gyun-dim); border:1px solid var(--gyun); color:var(--ink); font-family:var(--mono);
+    font-size:14px; padding:11px 30px; cursor:pointer; letter-spacing:0.05em;
+  }
+  #titleScreen button:hover{ background:var(--gyun); }
+  #titleScreen .controls{ margin-top:34px; font-size:11px; color:var(--ink-dim); line-height:1.9; max-width:560px; }
+  #titleScreen .controls b{ color:var(--ink); }
+  #titleScreen .goal{ margin-top:22px; font-size:12px; color:var(--gold); max-width:520px; line-height:1.8; border:1px dashed var(--line); padding:12px 16px; }
+
+  /* ---------- Top-left minimap ---------- */
+  #topLeft{ position:absolute; top:14px; left:14px; }
+  #minimap{ background:rgba(10,10,13,0.75); border:1px solid var(--line); display:block; }
+  #zoneLabel{ margin-top:6px; font-size:11px; color:var(--ink); background:rgba(10,10,13,0.75); border:1px solid var(--line); padding:4px 10px; display:inline-block; }
+
+  /* ---------- Top-right quest / faction ---------- */
+  #topRight{ position:absolute; top:14px; right:14px; width:260px; text-align:right; }
+  #mainQuestBox{ background:rgba(20,15,8,0.85); border:1px solid var(--gold); padding:9px 12px; font-size:11px; text-align:left; color:var(--ink); margin-bottom:8px; }
+  #mainQuestBox .mqHead{ color:var(--gold); font-weight:700; margin-bottom:3px; letter-spacing:0.05em; }
+  #questTracker{ background:rgba(10,10,13,0.75); border:1px solid var(--line); padding:10px 12px; font-size:11px; text-align:left; color:var(--ink-dim); min-height:20px; max-height:200px; overflow-y:auto; }
+  #questTracker .qTitle{ color:var(--ink); font-weight:700; margin-bottom:3px; }
+  #questTracker .qLine{ margin:2px 0; }
+  #factionBtn{ margin-top:8px; background:rgba(10,10,13,0.75); border:1px solid var(--line); padding:5px 10px; font-size:11px; cursor:pointer; color:var(--ink-dim); }
+  #factionBtn:hover{ color:var(--ink); }
+
+  /* ---------- Bottom-left bars ---------- */
+  #bottomLeft{ position:absolute; left:14px; bottom:14px; width:260px; }
+  .barWrap{ display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+  .barLabel{ width:32px; font-size:10px; color:var(--ink-dim); }
+  .bar{ flex:1; height:12px; background:#1a1a1e; border:1px solid var(--line); position:relative; overflow:hidden; }
+  .bar .fill{ height:100%; width:100%; transition:width 0.15s linear; }
+  .hpBar .fill{ background:linear-gradient(90deg,#7a1a2c,var(--gyun)); }
+  .staBar .fill{ background:linear-gradient(90deg,#2a5350,var(--record)); }
+  .gaugeRow{ display:flex; gap:14px; font-size:10px; color:var(--ink-dim); margin:6px 0; }
+  .gaugeRow b{ color:var(--ink); font-weight:500; }
+  .lvRow{ font-size:10px; color:var(--ink-dim); }
+
+  /* ---------- Bottom-center skills ---------- */
+  #bottomCenter{ position:absolute; bottom:14px; left:50%; transform:translateX(-50%); display:flex; gap:8px; }
+  .skillSlot{
+    width:58px; height:58px; background:rgba(10,10,13,0.75); border:1px solid var(--line);
+    font-size:10px; color:var(--ink-dim); display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:4px; text-align:center; line-height:1.3; cursor:pointer;
+  }
+  .skillSlot b{ font-family:var(--serif); font-size:13px; color:var(--ink); }
+  .skillSlot.ready{ border-color:var(--record); }
+  .skillSlot.locked{ opacity:0.35; }
+
+  /* ---------- Interact prompt / persistent hint ---------- */
+  #interactPrompt{
+    position:absolute; transform:translate(-50%,-100%); background:rgba(10,10,13,0.85);
+    border:1px solid var(--record); color:var(--ink); font-size:12px; padding:5px 10px;
+    white-space:nowrap; animation:promptPulse 1.2s ease-in-out infinite;
+  }
+  #interactPrompt.hidden{ display:none; }
+  @keyframes promptPulse{ 0%,100%{opacity:0.7;} 50%{opacity:1;} }
+  #controlsHint{
+    position:absolute; bottom:80px; left:50%; transform:translateX(-50%);
+    font-size:11px; color:var(--ink-dim); background:rgba(10,10,13,0.55); padding:5px 14px;
+    white-space:nowrap; letter-spacing:0.02em;
+  }
+
+  /* ---------- Toast ---------- */
+  #toastWrap{ position:absolute; top:90px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; gap:6px; align-items:center; max-width:80vw; }
+  .toast{ background:rgba(10,10,13,0.85); border:1px solid var(--line); padding:8px 16px; font-size:12px; color:var(--ink); animation:toastIn 0.25s ease; text-align:center; }
+  @keyframes toastIn{ from{opacity:0; transform:translateY(-8px);} to{opacity:1; transform:none;} }
+
+  /* ---------- Dialogue ---------- */
+  #dialogueBox{
+    position:absolute; left:50%; bottom:110px; transform:translateX(-50%); width:min(640px,90vw);
+    background:rgba(10,10,13,0.96); border:1px solid var(--line); padding:16px 20px; pointer-events:auto;
+    max-height:60vh; overflow-y:auto;
+  }
+  #dialogueBox.hidden{ display:none; }
+  #dialogueName{ font-family:var(--serif); font-weight:700; color:var(--gyun); margin-bottom:8px; font-size:15px; }
+  #dialogueText{ font-family:var(--serif); font-size:15px; line-height:1.7; margin-bottom:12px; }
+  #dialogueOptions{ display:flex; flex-direction:column; gap:6px; margin-bottom:8px; }
+  #dialogueOptions button{
+    text-align:left; background:none; border:1px solid var(--line); color:var(--ink); font-family:var(--serif);
+    font-size:13px; padding:9px 12px; cursor:pointer;
+  }
+  #dialogueOptions button:hover{ border-color:var(--gyun); }
+  #dialogueOptions .lockedNote{ font-size:11px; color:var(--ink-dim); font-family:var(--mono); padding:4px 2px; }
+  #dialogueHint{ font-size:10px; color:var(--ink-dim); }
+
+  /* ---------- Faction / Help panels ---------- */
+  .panel{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:min(440px,92vw);
+    background:rgba(10,10,13,0.97); border:1px solid var(--line); padding:22px 26px; pointer-events:auto;
+    max-height:82vh; overflow-y:auto;
+  }
+  .panel.hidden{ display:none; }
+  .panel h2{ font-family:var(--serif); font-size:18px; margin:0 0 16px; }
+  .panel .row{ display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dotted var(--line); font-size:12px; gap:10px; }
+  .panel .repbar{ width:120px; height:6px; background:#1a1a1e; position:relative; flex-shrink:0; }
+  .panel .repbar .fill{ position:absolute; top:0; bottom:0; background:var(--record); }
+  .panel .closeHint{ margin-top:14px; font-size:10px; color:var(--ink-dim); text-align:center; line-height:1.7; }
+  #helpOverlay p{ font-size:12px; line-height:1.9; margin:2px 0; }
+  #helpOverlay b{ color:var(--ink); display:inline-block; width:110px; }
+  .codexEntry{ margin-bottom:12px; }
+  .codexTitle{ color:var(--gold); font-weight:700; margin-bottom:3px; font-size:13px; }
+  .codexText{ font-size:11.5px; line-height:1.65; color:var(--ink-dim); }
+  .codexLocked{ color:var(--ink-faint,#524f45); font-size:12px; padding:4px 0; }
+
+  /* ---------- Finale ---------- */
+  #finaleOverlay{
+    position:absolute; inset:0; background:#000; display:flex; align-items:center; justify-content:center;
+    flex-direction:column; text-align:center; pointer-events:auto; opacity:0; transition:opacity 1.2s ease; z-index:60; padding:20px;
+  }
+  #finaleOverlay.show{ opacity:1; pointer-events:auto; }
+  #finaleOverlay.hidden{ display:none; }
+  #finaleText{ font-family:var(--serif); font-size:19px; line-height:2.1; max-width:640px; color:var(--ink); }
+  #finaleChoices{ display:flex; gap:16px; margin-top:30px; flex-wrap:wrap; justify-content:center; }
+  #finaleChoices button{
+    background:none; border:1px solid var(--line); color:var(--ink); font-family:var(--serif); font-size:15px;
+    padding:16px 26px; cursor:pointer;
+  }
+  #finaleChoices button:hover{ border-color:var(--gyun); color:var(--gyun); }
+  #finaleFinal{ font-family:var(--serif); font-size:30px; letter-spacing:0.1em; color:var(--gyun); white-space:pre-line; }
+
+  #vignette{ position:absolute; inset:0; pointer-events:none; box-shadow:inset 0 0 140px 40px rgba(0,0,0,0.65); }
+  #glitchbar{ position:absolute; top:14px; left:50%; transform:translateX(-50%); font-size:11px; color:var(--gyun); opacity:0; transition:opacity 0.4s; }
+
+  /* ---------- Mobile touch controls ---------- */
+  .touchOnly{ display:none; }
+  body.touch .touchOnly{ display:block; }
+  body.touch #controlsHint{ display:none; }
+  body.touch #bottomCenter{ bottom:158px; }
+  #joystickBase{
+    position:absolute; left:22px; bottom:150px; width:118px; height:118px; border-radius:50%;
+    background:rgba(255,255,255,0.05); border:1px solid var(--line); touch-action:none;
+  }
+  #joystickKnob{
+    position:absolute; left:50%; top:50%; width:50px; height:50px; margin:-25px 0 0 -25px;
+    border-radius:50%; background:rgba(234,230,218,0.18); border:1px solid var(--ink-dim);
+  }
+  #touchActions{ position:absolute; right:18px; bottom:150px; display:flex; flex-direction:column; align-items:flex-end; gap:10px; }
+  .touchBtn{
+    width:72px; height:72px; border-radius:50%; background:rgba(10,10,13,0.75); border:1px solid var(--line);
+    color:var(--ink); font-family:var(--mono); font-size:11px; touch-action:none;
+  }
+  .atkBtn{ width:88px; height:88px; border-color:var(--gyun); background:rgba(194,42,86,0.18); font-size:12px; }
+
+  @media (max-width:760px){
+    #minimap{ width:110px; height:110px; }
+    #topLeft canvas{ width:110px; height:110px; }
+    #bottomLeft{ width:180px; }
+    #topRight{ width:180px; }
+    .skillSlot{ width:44px; height:44px; font-size:8px; }
+    .skillSlot b{ font-size:11px; }
+    #dialogueBox{ bottom:150px; padding:12px 14px; }
+  }
+</style>
+</head>
+<body>
+<div id="game">
+  <canvas id="world"></canvas>
+  <div id="nightOverlay"></div>
+  <div id="vignette"></div>
+
+  <div id="titleScreen">
+    <h1>균균월드</h1>
+    <div class="sub">OPEN WORLD ACTION RPG · GYUN-Ω BUILD 2</div>
+    <input id="nameInput" placeholder="이름을 입력하십시오" maxlength="10">
+    <br>
+    <button id="startBtn">세계로 들어간다</button>
+    <div class="controls" id="controlsText">
+      <b>WASD</b> 이동 &nbsp; <b>Shift</b> 달리기 &nbsp; <b>Space</b> 회피 &nbsp; <b>마우스 좌클릭</b> 공격(길게=강공격)<br>
+      <b>F</b> 상호작용/대화 진행 &nbsp; <b>1</b> 회복약 &nbsp; <b>2~4</b> 스킬 &nbsp; <b>C</b> 세력 정보 &nbsp; <b>H</b> 도움말
+    </div>
+    <div class="goal">
+      목표를 잃었다면 화면 우측 상단의 <b style="color:var(--gold)">노란 테두리 상자(메인 퀘스트)</b>가 항상 다음에 할 일을 알려준다.<br>
+      메인 퀘스트는 Sod 가입 → 6개 지역 필드보스를 차례로 처치 → 균교에서 균계 접근권 획득 → 균계 수도의 대균 처치 → 마지막 경계, 순서로 이어진다.<br>
+      Sod에 가입하면 보스를 처치하고 평판이 쌓일수록 <b style="color:var(--gold)">Recruit → Reaver → Harbinger → Archslayer → Primarch</b>로 자동 승급한다.<br>
+      탐험하고 대화하고 처치할 때마다 <b style="color:var(--gold)">세계관 도감(L)</b>에 새로운 항목이 기록된다.
+    </div>
+  </div>
+
+  <div id="hud">
+    <div id="glitchbar">관측자를 관측했습니다.</div>
+    <div id="topLeft">
+      <canvas id="minimap" width="170" height="170"></canvas>
+      <div id="zoneLabel">-</div>
+    </div>
+    <div id="topRight">
+      <div id="mainQuestBox"><div class="mqHead">메인 퀘스트</div><div id="mqText">-</div></div>
+      <div id="questTracker">진행 중인 부가 퀘스트 없음</div>
+      <div id="factionBtn" class="clickable">세력 정보 / 특전 (C)</div>
+      <div id="codexBtn" class="clickable" style="margin-top:6px;background:rgba(10,10,13,0.75);border:1px solid var(--line);padding:5px 10px;font-size:11px;cursor:pointer;color:var(--ink-dim);">세계관 도감 (L)</div>
+    </div>
+    <div id="bottomLeft">
+      <div class="barWrap"><div class="barLabel">HP</div><div class="bar hpBar"><div class="fill" id="hpFill"></div></div></div>
+      <div class="barWrap"><div class="barLabel">STA</div><div class="bar staBar"><div class="fill" id="staFill"></div></div></div>
+      <div class="gaugeRow">
+        <span>관측 <b id="obsVal">0</b></span>
+        <span>균화 <b id="corVal">0</b></span>
+        <span>심심함 <b id="borVal">0</b></span>
+      </div>
+      <div class="lvRow">Lv.<span id="lvVal">1</span> · EXP <span id="xpVal">0/50</span> · 골드 <span id="goldVal">0</span> · 물약 <span id="potionVal">2</span><span id="rankVal"></span></div>
+    </div>
+    <div id="bottomCenter">
+      <div class="skillSlot ready" id="slot1"><b>1</b>회복약</div>
+      <div class="skillSlot ready" id="slot2"><b>2</b>돌진베기</div>
+      <div class="skillSlot locked" id="slot3"><b>3</b>균격(잠김)</div>
+      <div class="skillSlot locked" id="slot4"><b>4</b>궁극기(잠김)</div>
+    </div>
+    <div id="toastWrap"></div>
+    <div id="interactPrompt" class="hidden">F : 대화</div>
+    <div id="controlsHint">WASD 이동 · Shift 달리기 · Space 회피 · 마우스클릭 공격 · F 대화/상호작용 · H 도움말</div>
+
+    <div id="joystickBase" class="clickable touchOnly"><div id="joystickKnob"></div></div>
+    <div id="touchActions" class="touchOnly">
+      <button id="btnDodge" class="clickable touchBtn">회피</button>
+      <button id="btnInteract" class="clickable touchBtn">상호작용</button>
+      <button id="btnAttack" class="clickable touchBtn atkBtn">공격</button>
+    </div>
+
+    <div id="dialogueBox" class="hidden">
+      <div id="dialogueName"></div>
+      <div id="dialogueText"></div>
+      <div id="dialogueOptions"></div>
+      <div id="dialogueHint">F : 계속 / 닫기</div>
+    </div>
+    <div id="factionPanel" class="panel hidden">
+      <h2>세력 평판 &amp; 특전</h2>
+      <div class="row"><span>균교</span><div class="repbar"><div class="fill" id="rep-gyunkyo"></div></div></div>
+      <div class="row"><span>Sod</span><div class="repbar"><div class="fill" id="rep-sod"></div></div></div>
+      <div class="row"><span>임루아의 검</span><div class="repbar"><div class="fill" id="rep-imrua"></div></div></div>
+      <div class="row"><span>무균회</span><div class="repbar"><div class="fill" id="rep-mugyun"></div></div></div>
+      <div class="row"><span>기록관</span><div class="repbar"><div class="fill" id="rep-records"></div></div></div>
+      <div class="row"><span>관측자</span><div class="repbar"><div class="fill" id="rep-observers"></div></div></div>
+      <div class="closeHint">평판 40 / 80 이상이면 해당 세력 담당자와 대화 시 영구 특전을 골드로 구매할 수 있다.<br>C 또는 ESC 로 닫기</div>
+    </div>
+    <div id="codexPanel" class="panel hidden">
+      <h2>세계관 도감</h2>
+      <div id="codexList"></div>
+      <div class="closeHint">탐험하고, 대화하고, 처치할수록 새 항목이 등록된다.<br>L 또는 ESC 로 닫기</div>
+    </div>
+    <div id="helpOverlay" class="panel hidden">
+      <h2>조작법</h2>
+      <p><b>WASD</b>이동</p><p><b>Shift</b>달리기 (스태미나 소모)</p><p><b>Space</b>회피 (짧은 무적, 타이밍 좋으면 퍼펙트 도지)</p>
+      <p><b>마우스 좌클릭</b>공격 (짧게=약공격 콤보 / 길게=강공격)</p>
+      <p><b>F</b>상호작용 · 대화 진행 · NPC/게시판</p>
+      <p><b>1</b>회복약</p><p><b>2</b>돌진베기</p><p><b>3</b>균격 (균화율 50%↑)</p><p><b>4</b>궁극기 (Lv.5↑)</p>
+      <p><b>C</b>세력/특전</p><p><b>L</b>세계관 도감</p><p><b>H / ESC</b>이 창 닫기</p>
+      <p style="margin-top:10px;color:var(--gold)">신규 지역: 폐공장 · 기록도서관 · 관측자의 회랑 · 균계 수도</p>
+      <p style="color:var(--gold)">각 세력 담당자는 평판이 오르면 영구 스탯업 특전을 판매한다.</p>
+      <p style="color:var(--gold)">Sod에 가입하면 보스 처치와 평판에 따라 Recruit→Reaver→Harbinger→Archslayer→Primarch로 자동 승급한다.</p>
+      <div class="closeHint">H 로 닫기</div>
+    </div>
+  </div>
+
+  <div id="finaleOverlay" class="hidden">
+    <div id="finaleText"></div>
+    <div id="finaleChoices" style="display:none;"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   균균월드 : OPEN WORLD ACTION RPG — BUILD 2
+   신규: 4개 맵(폐공장/기록도서관/관측자의 회랑/균계 수도), 8종 신규 보스,
+        메인퀘스트 가이드, 6세력 전원 평판 상승 경로 + 세력별 영구 특전,
+        모바일 가상 조이스틱/버튼.
+   상태는 메모리에만 저장됩니다 (새로고침 시 초기화).
+============================================================ */
+
+const canvas = document.getElementById('world');
+const ctx = canvas.getContext('2d');
+function resize(){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+window.addEventListener('resize', resize); resize();
+
+/* ---------------- 터치 기기 감지 ---------------- */
+const isTouchDevice = (('ontouchstart' in window) || navigator.maxTouchPoints>0);
+if(isTouchDevice){
+  document.body.classList.add('touch');
+  document.getElementById('controlsText').innerHTML =
+    '왼쪽 <b>가상 조이스틱</b>으로 이동 &nbsp; 오른쪽 <b>공격/회피/상호작용</b> 버튼 사용<br>' +
+    '화면 하단 스킬 아이콘은 <b>탭</b>으로 사용 &nbsp; 좌측 상단 <b>세력 정보</b> 버튼 탭 가능';
+  document.body.addEventListener('touchmove', e=>{ e.preventDefault(); }, {passive:false});
+}
+
+/* ---------------- 입력 (키보드) ---------------- */
+const keys = {};
+let mouseScreen = {x:innerWidth/2, y:innerHeight/2};
+let mouseDown = false, mouseDownTime = 0;
+window.addEventListener('keydown', e=>{
+  keys[e.key.toLowerCase()] = true;
+  if(e.key===' ') e.preventDefault();
+});
+window.addEventListener('keyup', e=> keys[e.key.toLowerCase()] = false);
+canvas.addEventListener('mousemove', e=>{ mouseScreen.x=e.clientX; mouseScreen.y=e.clientY; });
+canvas.addEventListener('mousedown', e=>{ if(e.button===0){ mouseDown=true; mouseDownTime=performance.now(); }});
+window.addEventListener('mouseup', e=>{
+  if(e.button===0 && mouseDown){
+    mouseDown=false;
+    const held = performance.now()-mouseDownTime;
+    tryAttack(held>420);
+  }
+});
+
+/* ---------------- 유틸 ---------------- */
+function clamp(v,lo,hi){ return Math.max(lo,Math.min(hi,v)); }
+function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+function angleTo(a,b){ return Math.atan2(b.y-a.y, b.x-a.x); }
+function rnd(a,b){ return a+Math.random()*(b-a); }
+function rect(x,y,w,h){ return {x,y,w,h}; }
+function circleRectPush(cx,cy,r,rectv){
+  const nx = clamp(cx, rectv.x, rectv.x+rectv.w);
+  const ny = clamp(cy, rectv.y, rectv.y+rectv.h);
+  const dx = cx-nx, dy = cy-ny;
+  const d = Math.hypot(dx,dy);
+  if(d < r && d>0.0001){
+    const push = (r-d);
+    return {x: cx + dx/d*push, y: cy + dy/d*push};
+  }
+  if(d===0){ return {x:cx, y:cy-r}; }
+  return null;
+}
+function pointSegDist(px,py, ax,ay, bx,by){
+  const abx=bx-ax, aby=by-ay;
+  const apx=px-ax, apy=py-ay;
+  const abLen2 = abx*abx+aby*aby;
+  let t = abLen2>0 ? (apx*abx+apy*aby)/abLen2 : 0;
+  t = clamp(t,0,1);
+  const cx = ax+abx*t, cy = ay+aby*t;
+  return Math.hypot(px-cx, py-cy);
+}
+
+/* ---------------- 플레이어 ---------------- */
+const player = {
+  x:1000, y:1200, r:15, facing:0,
+  hp:100, maxHp:100, stamina:100, maxStamina:100,
+  level:1, xp:0, xpNext:50, gold:0, potion:2,
+  baseDmg:12, dmg:12, xpMult:1, goldMult:1,
+  speed:220,
+  attackCooldown:0, comboIndex:0, comboTimer:0, perfectWindow:0,
+  dodgeCooldown:0, invuln:0, dodging:0, dodgeVec:{x:0,y:0},
+  skillCooldowns:{dash:0, gyun:0, ult:0},
+  corruption:0, observation:0, boredom:0,
+  rep:{gyunkyo:0, sod:0, imrua:0, mugyun:0, records:0, observers:0},
+  zone:'city',
+  flags:{ sodTalked:false, imruaTalked:false, mugyunTalked:false, mugyunChoiceMade:false,
+          gyungyeUnlocked:false, gyunEoLearned:false, endingDone:false, postFinale:false, sodJoined:false,
+          bossDefeated:{} },
+  sodRankIdx:0,
+  codexSeen:{},
+  quests:{},
+  perksBought:{},
+  zoneVisited:{city:true}
+};
+let lastIdleAt = performance.now();
+function markActive(){ lastIdleAt = performance.now(); }
+['keydown','mousedown','mousemove','touchstart'].forEach(ev=> window.addEventListener(ev, markActive));
+
+/* ---------------- 카메라 ---------------- */
+const camera = {x:0,y:0};
+
+/* ---------------- 토스트 ---------------- */
+function toast(msg){
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className='toast'; el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(()=> el.remove(), 3400);
+}
+
+/* ---------------- 떠다니는 텍스트(월드공간) ---------------- */
+let floaters = [];
+function floatText(x,y,text,color){ floaters.push({x,y,text,color:color||'#eae6da', life:1.0}); }
+
+/* ============================================================
+   적 / 보스 템플릿
+============================================================ */
+const ENEMY_TYPES = {
+  error:       { key:'error', name:'오류체', hp:34, dmg:9, speed:125, r:14, color:'#7fd9c9', xp:10, gold:[2,5], aggro:230, hostile:true },
+  errorElite:  { key:'errorElite', name:'오류체(정예)', hp:72, dmg:14, speed:145, r:16, color:'#3fae9c', xp:22, gold:[6,12], aggro:260, hostile:true },
+  gyunhwa:     { key:'gyunhwa', name:'균화체', hp:26, dmg:6, speed:95,  r:14, color:'#8f6fb0', xp:7, gold:[1,3], aggro:0, hostile:false },
+  gyunhwaElite:{ key:'gyunhwaElite', name:'균화체(고위)', hp:54, dmg:11, speed:110, r:16, color:'#6f4f96', xp:17, gold:[4,8], aggro:0, hostile:false },
+  mugyunGuard: { key:'mugyunGuard', name:'무균 집행체', hp:58, dmg:16, speed:135, r:15, color:'#e7e7e7', xp:18, gold:[4,9], aggro:260, hostile:true },
+  dummy:       { key:'dummy', name:'훈련용 표적', hp:18, dmg:0, speed:0, r:14, color:'#555b63', xp:4, gold:[0,0], aggro:0, hostile:false, immobile:true, respawns:true },
+  recordWisp:  { key:'recordWisp', name:'기록 조각', hp:30, dmg:10, speed:100, r:13, color:'#4fa39c', xp:12, gold:[3,6], aggro:240, hostile:true },
+  observerWisp:{ key:'observerWisp', name:'관측 변형체', hp:28, dmg:9, speed:155, r:13, color:'#c9c9d9', xp:12, gold:[3,6], aggro:260, hostile:true },
+  factoryDrone:{ key:'factoryDrone', name:'폐공장 드론', hp:40, dmg:11, speed:115, r:15, color:'#9c8f5a', xp:13, gold:[3,7], aggro:230, hostile:true }
+};
+const BOSS_TYPES = {
+  divineRelic:   { key:'divineRelic', name:'신성 잔재', hp:360, dmg:24, speed:75, r:28, color:'#d9b64f', xp:190, gold:[45,65], aggro:420 },
+  errorCore:     { key:'errorCore', name:'오류 핵', hp:220, dmg:16, speed:60, r:24, color:'#3fae9c', xp:110, gold:[30,50], aggro:380 },
+  gateKeeper:    { key:'gateKeeper', name:'수문 집행검', hp:260, dmg:20, speed:100, r:24, color:'#e0c464', xp:140, gold:[35,55], aggro:400 },
+  mugyunCommander:{ key:'mugyunCommander', name:'무균 집행관', hp:300, dmg:22, speed:120, r:24, color:'#f2f2f2', xp:160, gold:[40,60], aggro:400 },
+  recordDevourer:{ key:'recordDevourer', name:'기록 포식자', hp:340, dmg:20, speed:70, r:26, color:'#2f6f6a', xp:200, gold:[50,70], aggro:420 },
+  reverseObserver:{ key:'reverseObserver', name:'역관측자', hp:320, dmg:22, speed:90, r:26, color:'#d7d7ea', xp:200, gold:[50,70], aggro:420 },
+  greatGyun:     { key:'greatGyun', name:'대균', hp:520, dmg:26, speed:80, r:32, color:'#7a3f5a', xp:280, gold:[70,100], aggro:450, noSummon:true },
+  transGyun:     { key:'transGyun', name:'초균', hp:460, dmg:28, speed:110, r:30, color:'#c22a56', xp:320, gold:[80,120], aggro:460, noSummon:true }
+};
+
+function makeEnemy(typeKey, x, y, isBoss){
+  const t = isBoss ? BOSS_TYPES[typeKey] : ENEMY_TYPES[typeKey];
+  return {
+    ...t, x, y, anchorX:x, anchorY:y, hp:t.hp, maxHp:t.hp, facing:0,
+    state:'idle', stateTimer:rnd(0,2), wanderTarget:null,
+    attackTimer:0, hitFlash:0, fleeTimer:0, dead:false, deadTimer:0,
+    isBoss:!!isBoss, summonCd: isBoss?6:0, phase2:false, definedAsEnemy:false
+  };
+}
+function makeNpc(opts){ return Object.assign({ r:14, patrol:null, patrolIdx:0 }, opts); }
+
+/* ============================================================
+   퀘스트 정의
+============================================================ */
+const QUESTS = {
+  cleanCity:   { id:'cleanCity', title:'오류체 소탕', desc:'멘계 중앙도시의 오류체 5마리 처치',
+    need:{type:'kill', key:'error', count:5}, reward:{xp:40, gold:20, potion:1, rep:{sod:8}} },
+  factoryClear:{ id:'factoryClear', title:'폐공장 정리', desc:'폐공장의 필드보스 [오류 핵] 처치',
+    need:{type:'kill', key:'errorCore', count:1}, reward:{xp:90, gold:35, rep:{sod:12}} },
+  sodRecon:    { id:'sodRecon', title:'신격 잔재 조사', desc:'Sod 영역의 필드보스 [신성 잔재] 처치',
+    need:{type:'kill', key:'divineRelic', count:1}, reward:{xp:150, gold:60, rep:{sod:30}} },
+  swordTrial:  { id:'swordTrial', title:'검술 시험', desc:'훈련용 표적 3개 파괴',
+    need:{type:'kill', key:'dummy', count:3}, reward:{xp:35, gold:15, rep:{imrua:25}} },
+  gateKeeperQuest:{ id:'gateKeeperQuest', title:'검위의 증표', desc:'임루아의 검 영역 필드보스 [수문 집행검] 처치',
+    need:{type:'kill', key:'gateKeeper', count:1}, reward:{xp:130, gold:40, rep:{imrua:32}} },
+  mugyunDuel:  { id:'mugyunDuel', title:'무균의 결투', desc:'무균구역 필드보스 [무균 집행관]에게 도전 (승리하면 오히려 인정받는다)',
+    need:{type:'kill', key:'mugyunCommander', count:1}, reward:{xp:140, gold:45, rep:{mugyun:36}} },
+  visitGyungye:{ id:'visitGyungye', title:'균계로 가는 길', desc:'균교 대사제와 대화하여 균계 접근권 획득',
+    need:{type:'talk', npc:'균교 대사제'}, reward:{xp:20, rep:{gyunkyo:30}} },
+  recordCollect:{ id:'recordCollect', title:'흩어진 기록 회수', desc:'기록도서관의 기록 조각 4마리 처치',
+    need:{type:'kill', key:'recordWisp', count:4}, reward:{xp:35, gold:15, rep:{records:15}} },
+  recordRecover:{ id:'recordRecover', title:'기록 포식자', desc:'기록도서관 필드보스 [기록 포식자] 처치',
+    need:{type:'kill', key:'recordDevourer', count:1}, requires:'recordCollect', reward:{xp:160, gold:55, rep:{records:40}} },
+  observeWisps:{ id:'observeWisps', title:'이상현상 관측', desc:'관측자의 회랑 관측 변형체 4마리 처치',
+    need:{type:'kill', key:'observerWisp', count:4}, reward:{xp:35, gold:15, rep:{observers:15}} },
+  observeAnomaly:{ id:'observeAnomaly', title:'역관측자', desc:'관측자의 회랑 필드보스 [역관측자] 처치',
+    need:{type:'kill', key:'reverseObserver', count:1}, requires:'observeWisps', reward:{xp:160, gold:55, rep:{observers:40}} },
+  greatGyunQuest:{ id:'greatGyunQuest', title:'대균', desc:'균계 수도의 필드보스 [대균] 처치',
+    need:{type:'kill', key:'greatGyun', count:1}, reward:{xp:220, gold:70} }
+};
+
+function acceptQuest(id){
+  if(player.quests[id]) return;
+  player.quests[id] = {progress:0, complete:false, turnedIn:false};
+  toast('퀘스트 수락: ' + QUESTS[id].title);
+  renderQuestTracker();
+}
+function progressQuest(type, key){
+  Object.keys(player.quests).forEach(id=>{
+    const q = player.quests[id]; const def = QUESTS[id];
+    if(q.complete || q.turnedIn) return;
+    if(def.need.type===type && type==='kill' && def.need.key===key){
+      q.progress = Math.min(def.need.count, q.progress+1);
+      if(q.progress>=def.need.count){ q.complete=true; toast('퀘스트 완료: '+def.title+' (담당자에게 F로 보고)'); }
+    }
+    if(def.need.type===type && type==='talk' && def.need.npc===key){
+      q.complete=true; q.progress=1;
+    }
+  });
+  renderQuestTracker();
+}
+function turnInQuest(id){
+  const q = player.quests[id]; const def = QUESTS[id];
+  if(!q || !q.complete || q.turnedIn) return;
+  q.turnedIn = true;
+  const r = def.reward;
+  if(r.xp) gainXp(r.xp);
+  if(r.gold) player.gold += r.gold;
+  if(r.potion) player.potion += r.potion;
+  if(r.rep) Object.keys(r.rep).forEach(k=> adjRep(k, r.rep[k]));
+  if(id==='visitGyungye'){ player.flags.gyungyeUnlocked = true; toast('균계로 가는 길이 열렸다.'); }
+  toast('보상 수령: ' + def.title);
+  renderQuestTracker();
+}
+function renderQuestTracker(){
+  const el = document.getElementById('questTracker');
+  const active = Object.keys(player.quests).filter(id=>!player.quests[id].turnedIn);
+  if(active.length===0){ el.innerHTML = '진행 중인 부가 퀘스트 없음'; return; }
+  el.innerHTML = active.map(id=>{
+    const def = QUESTS[id]; const q = player.quests[id];
+    const p = def.need.type==='kill' ? `${q.progress}/${def.need.count}` : (q.complete?'완료':'미완료');
+    return `<div class="qTitle">${def.title}</div><div class="qLine">${def.desc} (${p})</div>`;
+  }).join('<hr style="border-color:#28282f;opacity:0.4;">');
+}
+
+/* ============================================================
+   메인 퀘스트 (진행 가이드)
+============================================================ */
+const MAIN_QUEST_STEPS = [
+  {desc:'Sod 모병관과 대화해 Sod에 가입하고, 폐공장의 필드보스 [오류 핵]을 처치하라 — 북쪽 포탈', check:()=>player.flags.sodJoined && player.flags.bossDefeated.errorCore},
+  {desc:'Sod 영역의 필드보스 [신성 잔재]를 처치하라 — Sod 영역 서쪽', check:()=>player.flags.bossDefeated.divineRelic},
+  {desc:'임루아의 검 영역의 필드보스 [수문 집행검]을 처치하라 — 동쪽 포탈', check:()=>player.flags.bossDefeated.gateKeeper},
+  {desc:'무균구역의 필드보스 [무균 집행관]에게 도전하라 — 서쪽 포탈', check:()=>player.flags.bossDefeated.mugyunCommander},
+  {desc:'기록도서관의 필드보스 [기록 포식자]를 처치하라 — 도시 북서쪽 포탈', check:()=>player.flags.bossDefeated.recordDevourer},
+  {desc:'관측자의 회랑의 필드보스 [역관측자]를 처치하라 — 도시 북동쪽 포탈', check:()=>player.flags.bossDefeated.reverseObserver},
+  {desc:'균교 대사제와 대화해 균계 접근권을 얻어라 — 남쪽 포탈 → 균교 대성당', check:()=>player.flags.gyungyeUnlocked},
+  {desc:'균계 수도의 필드보스 [대균]을 처치하라', check:()=>player.flags.bossDefeated.greatGyun},
+  {desc:'균계 최심부(마지막 경계)로 나아가 초균과 조우하라', check:()=>player.flags.endingDone}
+];
+function renderMainQuest(){
+  const el = document.getElementById('mqText');
+  const step = MAIN_QUEST_STEPS.find(s=>!s.check());
+  el.textContent = step ? step.desc : '모든 주요 목표 달성. 세계는 계속된다 — 자유롭게 탐험하라.';
+}
+
+/* ============================================================
+   세력 평판 / 특전
+============================================================ */
+function adjRep(key, delta){
+  player.rep[key] = clamp(player.rep[key]+delta, -100, 100);
+  renderFactionPanel();
+}
+function renderFactionPanel(){
+  ['gyunkyo','sod','imrua','mugyun','records','observers'].forEach(k=>{
+    const el = document.getElementById('rep-'+k);
+    const v = player.rep[k];
+    const pct = (v+100)/2;
+    el.style.width = pct+'%';
+    el.style.background = v<0 ? '#7a1a2c' : '#4fa39c';
+  });
+}
+const FACTION_PERKS = {
+  sod:      [{repReq:25, cost:30, desc:'Sod 표준 무기 개조 (+8 공격력)', apply:p=>{p.baseDmg+=8; p.dmg=p.baseDmg;}},
+             {repReq:60, cost:80, desc:'Archslayer 인가 (+14 공격력)', apply:p=>{p.baseDmg+=14; p.dmg=p.baseDmg;}}],
+  imrua:    [{repReq:25, cost:30, desc:'수습검 사범의 지도 (+10 공격력)', apply:p=>{p.baseDmg+=10; p.dmg=p.baseDmg;}},
+             {repReq:60, cost:80, desc:'임루아의 인가 (+16 공격력)', apply:p=>{p.baseDmg+=16; p.dmg=p.baseDmg;}}],
+  mugyun:   [{repReq:25, cost:30, desc:'무균 표준화 슈트 (+30 최대 스태미나)', apply:p=>{p.maxStamina+=30; p.stamina=p.maxStamina;}},
+             {repReq:60, cost:80, desc:'완전 정렬 개조 (+30 최대 스태미나)', apply:p=>{p.maxStamina+=30; p.stamina=p.maxStamina;}}],
+  gyunkyo:  [{repReq:25, cost:30, desc:'균의 가호 (+25 최대 체력)', apply:p=>{p.maxHp+=25; p.hp=p.maxHp;}},
+             {repReq:60, cost:80, desc:'대사제의 축복 (+35 최대 체력)', apply:p=>{p.maxHp+=35; p.hp=p.maxHp;}}],
+  records:  [{repReq:25, cost:30, desc:'기록 보정 (경험치 획득 +25%)', apply:p=>{p.xpMult=(p.xpMult||1)+0.25;}},
+             {repReq:60, cost:80, desc:'완전한 기록 (경험치 획득 +25%)', apply:p=>{p.xpMult=(p.xpMult||1)+0.25;}}],
+  observers:[{repReq:25, cost:30, desc:'관측 렌즈 지급 (골드 획득 +25%)', apply:p=>{p.goldMult=(p.goldMult||1)+0.25;}},
+             {repReq:60, cost:80, desc:'역관측 내성 (골드 획득 +25%, 이동속도 +15)', apply:p=>{p.goldMult=(p.goldMult||1)+0.25; p.speed+=15;}}]
+};
+
+const SOD_RANKS = [
+  {name:'Recruit', need:null, perk:null},
+  {name:'Reaver', need:p=> p.rep.sod>=20 && p.flags.bossDefeated.errorCore,
+    perk:p=>{ p.baseDmg+=4; p.dmg=p.baseDmg; } },
+  {name:'Harbinger', need:p=> p.rep.sod>=40 && p.flags.bossDefeated.divineRelic,
+    perk:p=>{ p.maxHp+=20; p.hp=p.maxHp; } },
+  {name:'Archslayer', need:p=> p.rep.sod>=60 && p.flags.bossDefeated.gateKeeper && p.flags.bossDefeated.mugyunCommander,
+    perk:p=>{ p.baseDmg+=8; p.dmg=p.baseDmg; } },
+  {name:'Primarch', need:p=> p.rep.sod>=85 && p.flags.bossDefeated.greatGyun && p.flags.bossDefeated.transGyun,
+    perk:p=>{ p.maxHp+=40; p.hp=p.maxHp; p.baseDmg+=10; p.dmg=p.baseDmg; } }
+];
+function checkSodPromotion(){
+  if(!player.flags.sodJoined) return;
+  while(player.sodRankIdx < SOD_RANKS.length-1){
+    const next = SOD_RANKS[player.sodRankIdx+1];
+    if(next.need(player)){
+      player.sodRankIdx++;
+      if(next.perk) next.perk(player);
+      toast('Sod 승급 : ' + next.name + ' !');
+    } else break;
+  }
+}
+
+/* ============================================================
+   세계관 도감 (탐험/대화/처치로 잠금 해제)
+============================================================ */
+const CODEX = [
+  {id:'con-gyun', cat:'개념', title:'균', unlocked:()=>true,
+    text:'존재가 존재할 수 있게 되는 과정에서 발생한 예외. 신도 아니고 세계의 관리자도 아니다. 규칙이 균을 설명하려는 순간, 규칙 자체에 빈틈이 생긴다.'},
+  {id:'org-sod', cat:'세력', title:'Sod (Slayer of Divinity)', unlocked:p=>p.flags.sodTalked,
+    text:'신격과 초월체를 감시하고 필요하면 제거하는 상위 조직. "신이라고 해서 규칙 밖에 존재하는 것은 아니다." 계급: Recruit → Reaver → Harbinger → Archslayer → Primarch.'},
+  {id:'org-imrua', cat:'세력', title:'임루아의 검', unlocked:p=>p.flags.imruaTalked,
+    text:'검과 규율을 중심으로 움직이는 독립 세력. 검은 무기가 아니라 경계다 — 현실과 비현실, 질서와 오류 사이에 선을 긋는 상징.'},
+  {id:'org-mugyun', cat:'세력', title:'무균회', unlocked:p=>p.flags.mugyunTalked,
+    text:'균을 세계의 오류로 규정하고 완전한 현실을 추구한다. 그러나 균이 사라지면 세계의 예외와 가능성도 함께 사라질 위험이 있다. 악당이 아니라, 질서를 과신하는 자들이다.'},
+  {id:'org-gyunkyo', cat:'세력', title:'균교', unlocked:p=>p.flags.gyungyeUnlocked,
+    text:'균의 존재를 인정하고 연구하는 사상 체계. 핵심은 이해가 아니라 인정이다. "균을 이해하려 하지 말라. 이해하는 순간 균은 이미 다른 곳에 있다."'},
+  {id:'org-records', cat:'세력', title:'기록관', unlocked:p=>!!p.zoneVisited.records,
+    text:'기록은 단순한 문서가 아니라 현실의 일부를 고정하는 역할을 한다. "기록하지 않은 것은 잊힌 것이고, 잊힌 것은 언젠가 존재하지 않았던 것이 된다."'},
+  {id:'org-observers', cat:'세력', title:'관측자', unlocked:p=>!!p.zoneVisited.observers,
+    text:'세계 밖에서 현실을 바라보는 존재들. 관측 자체가 현실에 영향을 준다. 균을 관측하면, 균도 관측자를 마주 본다 — 이를 역관측이라 한다.'},
+  {id:'char-imrua', cat:'인물', title:'임루아', unlocked:p=>p.flags.imruaTalked,
+    text:'임루아의 검의 최상위 인물. 검으로 모든 것을 벨 수 있다고 믿지 않는다. 균과 임루아는 서로를 필요로 하면서도 완전히 이해하거나 지배하지 못하는 관계다.'},
+  {id:'ano-gyunhwa', cat:'변칙', title:'균화 현상', unlocked:p=>p.corruption>0,
+    text:'대상이 균의 영향을 받아 존재 방식이 변화하는 현상. 균어 습득 → 현상 인지 → 현실 오류 → 존재 정의 흔들림 → 균계 연결 → 균화 완료. 반드시 타락은 아니다.'},
+  {id:'ano-reverse', cat:'변칙', title:'역관측', unlocked:p=>p.observation>=50,
+    text:'관측 대상이 관측자를 역으로 인식하는 현상. 오래 바라보면, 바라보던 대상이 마주 보기 시작한다.'},
+  {id:'loc-capital', cat:'지역', title:'균계 수도', unlocked:p=>!!p.zoneVisited.gyungyeCapital,
+    text:'균계의 중심 도시. 길을 따라가면 출발점으로 돌아오지만, 출발점의 이름이 바뀌어 있다.'},
+  {id:'char-greatgyun', cat:'인물', title:'대균', unlocked:p=>!!p.flags.bossDefeated.greatGyun,
+    text:'균의 특성이 규모와 영향 범위로 확장된 존재. 하나의 세계가 아니라 여러 현실에 동시에 영향을 줄 수 있다.'},
+  {id:'char-transgyun', cat:'인물', title:'초균', unlocked:p=>!!p.zoneVisited.gyungye,
+    text:'개념적 특성이 극대화된 균의 형태. 상대를 공격하기보다 상대가 존재하는 방식 자체를 바꾼다. "적"이라는 정의를 지워버리면, 전투 자체가 성립하지 않는다.'},
+  {id:'loc-boundary', cat:'지역', title:'마지막 경계', unlocked:p=>p.flags.endingDone,
+    text:'모든 경계가 모이는 장소. 이름이 없고, 지도에도 표시되지 않는다. 그 너머에는 균계가 있고, 균이 있다.'},
+  {id:'con-omega', cat:'개념', title:'균균균균균', unlocked:p=>p.flags.endingDone,
+    text:'균어의 최상위 표현. 다섯 개의 균으로 분리해 해석하려는 모든 시도는 실패했다. 균교는 이를 "해석하려는 순간 이미 늦은 문장"이라 정의한다.'}
+];
+function checkCodexUnlocks(){
+  CODEX.forEach(c=>{
+    if(!player.codexSeen[c.id] && c.unlocked(player)){
+      player.codexSeen[c.id] = true;
+      toast('도감 등록: ' + c.title);
+    }
+  });
+}
+function renderCodex(){
+  const el = document.getElementById('codexList');
+  el.innerHTML = CODEX.map(c=>{
+    if(!player.codexSeen[c.id]) return `<div class="codexLocked">[${c.cat}] ???</div>`;
+    return `<div class="codexEntry"><div class="codexTitle">[${c.cat}] ${c.title}</div><div class="codexText">${c.text}</div></div>`;
+  }).join('');
+}
+function gainXp(n){
+  player.xp += Math.round(n*(player.xpMult||1));
+  while(player.xp >= player.xpNext){
+    player.xp -= player.xpNext;
+    player.level++;
+    player.xpNext = Math.round(player.xpNext*1.35);
+    player.maxHp += 14; player.hp = player.maxHp;
+    player.baseDmg += 3; player.dmg = player.baseDmg;
+    toast('레벨 업! Lv.'+player.level);
+    if(player.level>=5) document.getElementById('slot4').classList.remove('locked');
+  }
+}
+
+/* ============================================================
+   존(ZONE) 데이터
+============================================================ */
+const ZONES = {};
+
+ZONES.city = {
+  name:'멘계 중앙도시', recLevel:1, w:2200, h:1500, bg:'#14151b', ground:'#1b1c22', repFaction:'sod',
+  buildings:[ rect(300,300,260,180), rect(700,200,220,300), rect(1400,250,300,200), rect(1700,600,220,260),
+              rect(300,900,300,220), rect(1500,1000,260,200), rect(900,700,180,140) ],
+  portals:[
+    {r:rect(1000,0,180,40), target:'sod', spawn:{x:750,y:900}},
+    {r:rect(200,0,180,40), target:'records', spawn:{x:700,y:900}},
+    {r:rect(1700,0,180,40), target:'observers', spawn:{x:700,y:900}},
+    {r:rect(2160,650,40,180), target:'imrua', spawn:{x:70,y:520}},
+    {r:rect(0,650,40,180), target:'mugyun', spawn:{x:1350,y:520}},
+    {r:rect(1000,1460,180,40), target:'gyunkyo', spawn:{x:750,y:70}},
+    {r:rect(1000,858,80,40), target:'factory', spawn:{x:1050,y:900}}
+  ],
+  hasGyun:true, gyunAnchor:{x:1100,y:750},
+  spawnList:[{type:'error',count:6},{type:'gyunhwa',count:2}],
+  npcs:[
+    makeNpc({name:'퀘스트 게시판', x:1080, y:820, color:'#c9a24a', isBoard:true,
+      dialogue:['도시 곳곳에 오류체가 출몰하고 있다. 처치를 원하는 자는 이 게시판을 이용하라.'],
+      quests:['cleanCity']}),
+    makeNpc({name:'이름 없는 시민', x:520, y:560, color:'#9a9484', isAnomaly:true,
+      dialogue:['...', '제 이름을 아십니까?', '아무도 대답해주지 않습니다.'] }),
+    makeNpc({name:'상인', x:1550, y:900, color:'#e0c464', isShop:true,
+      dialogue:['회복약을 팔고 있소. 골드 10에 하나요.'] }),
+    makeNpc({name:'Sod 모병관', x:980, y:120, color:'#7ea1e6', mainFlag:'sodTalked',
+      dialogue:['신이라고 해서 규칙 밖에 존재하는 것은 아니다.', 'Sod에 가입하겠는가?'],
+      isRecruiter:'sod', isFactionVendor:'sod'})
+  ]
+};
+
+ZONES.factory = {
+  name:'폐공장', recLevel:2, w:1200, h:900, bg:'#181410', ground:'#221c16', repFaction:'sod',
+  buildings:[ rect(80,80,320,220), rect(760,80,320,220), rect(80,600,320,220), rect(760,600,320,220) ],
+  portals:[ {r:rect(560,860,100,40), target:'city', spawn:{x:1050,y:800}} ],
+  hasGyun:false, spawnList:[{type:'factoryDrone',count:5}],
+  bossSpawn:{key:'errorCore', x:600, y:450},
+  npcs:[ makeNpc({name:'정비공', x:300, y:700, color:'#9c8f5a',
+    dialogue:['이 공장은 오류체 때문에 버려졌다.', '핵을 처치하면 다시 쓸 수 있을 텐데.'],
+    quests:['factoryClear']}) ]
+};
+
+ZONES.sod = {
+  name:'Sod 영역', recLevel:3, w:1500, h:1100, bg:'#0e1016', ground:'#171a22', repFaction:'sod',
+  buildings:[ rect(200,200,320,220), rect(900,180,300,240), rect(600,700,260,200) ],
+  portals:[ {r:rect(650,1060,200,40), target:'city', spawn:{x:1000,y:80}} ],
+  hasGyun:false, spawnList:[{type:'error',count:4},{type:'errorElite',count:2}],
+  bossSpawn:{key:'divineRelic', x:300, y:300},
+  npcs:[ makeNpc({name:'Recruit 교관', x:750, y:900, color:'#7ea1e6',
+      dialogue:['상위층에는 아직 접근할 수 없다.', '신격 잔재가 서쪽 폐허에서 발견되었다. 처치하고 오면 인정받을 것이다.'],
+      quests:['sodRecon']}) ]
+};
+
+ZONES.imrua = {
+  name:'임루아의 검 영역', recLevel:3, w:1500, h:1100, bg:'#131013', ground:'#1a151b', repFaction:'imrua',
+  buildings:[ rect(500,150,400,150), rect(200,500,260,200), rect(1000,500,260,200) ],
+  portals:[ {r:rect(0,460,40,200), target:'city', spawn:{x:2100,y:750}} ],
+  hasGyun:false, spawnList:[{type:'errorElite',count:2},{type:'gyunhwa',count:1}],
+  bossSpawn:{key:'gateKeeper', x:1100, y:800},
+  dummies:[ {x:400,y:650}, {x:900,y:650}, {x:650,y:950} ],
+  npcs:[
+    makeNpc({name:'수습검 훈련교관', x:700, y:800, color:'#e0c464', mainFlag:'imruaTalked',
+      dialogue:['검은 무기가 아니다. 검은 경계다.', '훈련용 표적 세 개를 부수고 오면 검술을 인정하겠다.'],
+      quests:['swordTrial'], isFactionVendor:'imrua'}),
+    makeNpc({name:'검위', x:1100, y:950, color:'#e0c464',
+      dialogue:['수문 집행검이 이 지역을 배회하고 있다.', '쓰러뜨리면 검위의 증표를 내리겠다.'],
+      quests:['gateKeeperQuest']}),
+    makeNpc({name:'임루아', x:750, y:250, color:'#eae6da', isImrua:true,
+      dialogue:['...', '아직 이르다. 너도, 나도.', '균은 검으로 벨 수 있는 물질이 아니다.'] })
+  ]
+};
+
+ZONES.mugyun = {
+  name:'무균구역', recLevel:4, w:1500, h:1100, bg:'#1c1c1e', ground:'#242426', repFaction:'mugyun',
+  buildings:[ rect(400,300,240,240), rect(860,300,240,240), rect(400,700,240,240), rect(860,700,240,240) ],
+  portals:[ {r:rect(1460,460,40,200), target:'city', spawn:{x:100,y:750}} ],
+  hasGyun:false, spawnList:[{type:'mugyunGuard',count:4}],
+  bossSpawn:{key:'mugyunCommander', x:750, y:550},
+  npcs:[ makeNpc({name:'무균 조사관', x:750, y:180, color:'#e7e7e7', mainFlag:'mugyunTalked',
+      dialogue:['균이 존재하지 않는 완전한 현실. 그것이 우리의 목표다.', '당신은 우리를 이해하는가, 방해하는가?'],
+      isMugyunChoice:true, quests:['mugyunDuel'], isFactionVendor:'mugyun'}) ]
+};
+
+ZONES.gyunkyo = {
+  name:'균교 대성당', recLevel:3, w:1500, h:1100, bg:'#16101c', ground:'#1e1626',
+  buildings:[ rect(550,150,400,300) ],
+  portals:[
+    {r:rect(650,0,200,40), target:'city', spawn:{x:1000,y:1320}},
+    {r:rect(650,1060,200,40), target:'gyungyeCapital', spawn:{x:800,y:80}, locked:true}
+  ],
+  hasGyun:true, gyunAnchor:{x:750,y:280},
+  spawnList:[{type:'gyunhwa',count:2}],
+  npcs:[
+    makeNpc({name:'균학자', x:600, y:600, color:'#b483d8',
+      dialogue:['균어를 배우겠는가? 이해하려 하지 말고, 그저 인정하라.'], teachesGyunEo:true, isFactionVendor:'gyunkyo'}),
+    makeNpc({name:'균교 대사제', x:900, y:600, color:'#b483d8',
+      dialogue:['균을 이해하려 하지 마십시오. 이해하는 순간 균은 이미 다른 곳에 있을 테니까요.', '균계로 향하는 길을 열어드리겠습니다.'],
+      quests:['visitGyungye']})
+  ]
+};
+
+ZONES.records = {
+  name:'기록도서관', recLevel:5, w:1400, h:1000, bg:'#100e18', ground:'#171224', repFaction:'records',
+  buildings:[ rect(200,200,150,500), rect(450,200,150,500), rect(700,200,150,500), rect(950,200,150,500) ],
+  portals:[ {r:rect(600,0,200,40), target:'city', spawn:{x:290,y:80}} ],
+  hasGyun:false, spawnList:[{type:'recordWisp',count:5}],
+  bossSpawn:{key:'recordDevourer', x:700, y:850},
+  npcs:[ makeNpc({name:'오래된 사서', x:700, y:130, color:'#4fa39c',
+      dialogue:['기록하지 않은 것은 잊힌 것이다.', '잊힌 것은 언젠가 존재하지 않았던 것이 된다.'],
+      quests:['recordCollect','recordRecover'], isFactionVendor:'records'}) ]
+};
+
+ZONES.observers = {
+  name:'관측자의 회랑', recLevel:5, w:1400, h:1000, bg:'#0c0e14', ground:'#12141c', repFaction:'observers',
+  buildings:[ rect(200,150,200,120), rect(1000,150,200,120), rect(600,750,200,120) ],
+  portals:[ {r:rect(600,0,200,40), target:'city', spawn:{x:1790,y:80}} ],
+  hasGyun:false, spawnList:[{type:'observerWisp',count:5}],
+  bossSpawn:{key:'reverseObserver', x:700, y:220},
+  npcs:[ makeNpc({name:'관측자', x:700, y:650, color:'#d7d7ea',
+      dialogue:['관측 자체가 현실에 영향을 준다.', '균을 관측하면, 균도 당신을 관측한다.'],
+      quests:['observeWisps','observeAnomaly'], isFactionVendor:'observers'}) ]
+};
+
+ZONES.gyungyeCapital = {
+  name:'균계 수도', recLevel:7, w:1600, h:1200, bg:'#0a0716', ground:'#120c22',
+  buildings:[ rect(300,300,200,200), rect(1100,300,200,200), rect(650,700,300,150) ],
+  portals:[
+    {r:rect(700,0,200,40), target:'gyunkyo', spawn:{x:700,y:900}},
+    {r:rect(700,1160,200,40), target:'gyungye', spawn:{x:600,y:80}}
+  ],
+  hasGyun:true, gyunAnchor:{x:800,y:600},
+  spawnList:[{type:'gyunhwaElite',count:4},{type:'errorElite',count:2}],
+  bossSpawn:{key:'greatGyun', x:800, y:1000},
+  npcs:[ makeNpc({name:'균화된 여행자', x:500, y:1050, color:'#8f6fb0',
+      dialogue:['이 곳은 원래 있던 곳이 아닙니다.', '저도 어쩌다 여기 왔는지 모릅니다.', '대균이 이 도시를 배회하고 있습니다. 조심하십시오.'],
+      quests:['greatGyunQuest']}) ]
+};
+
+ZONES.gyungye = {
+  name:'균계 · 마지막 경계', recLevel:9, w:1300, h:950, bg:'#0a0510', ground:'#120a1c',
+  buildings:[ rect(300,200,200,160), rect(800,200,200,160) ],
+  portals:[ {r:rect(550,0,200,40), target:'gyungyeCapital', spawn:{x:700,y:1100}} ],
+  hasGyun:true, gyunAnchor:{x:650,y:500},
+  spawnList:[{type:'gyunhwaElite',count:3}],
+  bossSpawn:{key:'transGyun', x:650, y:650},
+  npcs:[], finaleTrigger: rect(550,860,200,80)
+};
+
+let currentZoneKey = 'city';
+function currentZone(){ return ZONES[currentZoneKey]; }
+
+Object.keys(ZONES).forEach(k=>{
+  const z = ZONES[k];
+  if(z.hasGyun){ z.gyun = { x:z.gyunAnchor.x, y:z.gyunAnchor.y, visible:true, timer:rnd(3,7), r:15 }; }
+});
+
+/* ============================================================
+   존 진입
+============================================================ */
+function enterZone(key, spawn){
+  const wasVisited = !!player.zoneVisited[key];
+  currentZoneKey = key;
+  const z = ZONES[key];
+  if(!z.enemies){
+    z.enemies = [];
+    if(z.bossSpawn) z.enemies.push(makeEnemy(z.bossSpawn.key, z.bossSpawn.x, z.bossSpawn.y, true));
+    if(z.dummies) z.dummies.forEach(d=> z.enemies.push(makeEnemy('dummy', d.x, d.y)));
+    if(z.spawnList) z.spawnList.forEach(s=>{
+      for(let i=0;i<s.count;i++) z.enemies.push(makeEnemy(s.type, rnd(150,z.w-150), rnd(150,z.h-150)));
+    });
+  }
+  player.x = spawn.x; player.y = spawn.y;
+  player.zone = key;
+  player.zoneVisited[key] = true;
+  document.getElementById('zoneLabel').textContent = z.name + ' · 권장 Lv.' + (z.recLevel||1);
+  toast('▶ ' + z.name + (wasVisited?'':'  (권장 레벨 '+(z.recLevel||1)+')'));
+}
+enterZone('city', {x:player.x, y:player.y});
+
+/* ============================================================
+   전투
+============================================================ */
+function tryAttack(heavy){
+  if(dialogueOpen || finaleActive) return;
+  if(player.attackCooldown>0) return;
+  if(heavy){
+    if(player.stamina < 18) { toast('스태미나 부족'); return; }
+    player.stamina -= 18;
+    doAttack(70, 1.8, 0.75);
+    player.comboIndex = 0;
+  } else {
+    player.comboIndex = (player.comboTimer>0) ? (player.comboIndex+1)%5 : 0;
+    player.comboTimer = 0.9;
+    const mult = [1,1.1,1.15,1.25,1.6][player.comboIndex];
+    doAttack(56, mult, 0.28);
+  }
+}
+function doAttack(range, mult, cooldown, tag){
+  player.attackCooldown = cooldown;
+  const dmg = Math.round(player.dmg * mult * (player.perfectWindow>0 ? 2 : 1));
+  player.perfectWindow = 0;
+  const z = currentZone();
+  z.enemies.forEach(e=>{
+    if(e.dead) return;
+    const a = angleTo(player,e);
+    let diff = Math.abs(a - player.facing);
+    diff = Math.min(diff, Math.PI*2-diff);
+    if(dist(player,e) < range && diff < 0.9){
+      if(tag==='gyunkyeok' && e.key==='transGyun' && !e.definedAsEnemy){
+        e.definedAsEnemy = true;
+        floatText(e.x, e.y-46, '"적"으로 재정의됨', '#c22a56');
+      }
+      damageEnemy(e, dmg);
+    }
+  });
+  if(z.gyun && z.gyun.visible){
+    const a = angleTo(player, z.gyun);
+    let diff = Math.abs(a - player.facing);
+    diff = Math.min(diff, Math.PI*2-diff);
+    if(dist(player, z.gyun) < range && diff < 0.9){
+      floatText(z.gyun.x, z.gyun.y-20, '균에게는 통하지 않는다', '#c22a56');
+      player.corruption = clamp(player.corruption+1,0,100);
+    }
+  }
+}
+function damageEnemy(e, dmg){
+  if(e.key==='transGyun' && !e.definedAsEnemy){ dmg = 1; }
+  e.hp -= dmg; e.hitFlash = 0.15;
+  floatText(e.x, e.y-24, '-'+dmg, '#ffdede');
+  if(!e.hostile && e.state==='idle'){ e.hostile = true; }
+  e.state = e.state==='idle'?'alert':e.state;
+  if(e.hp<=0 && !e.dead){
+    e.dead = true; e.deadTimer = 0.6;
+    gainXp(e.xp);
+    const g = Math.round(rnd(e.gold[0], e.gold[1]) * (player.goldMult||1));
+    player.gold += g;
+    if(e.key==='gyunhwa' || e.key==='gyunhwaElite') player.corruption = clamp(player.corruption+4,0,100);
+    if(e.isBoss){ toast('필드보스 처치: '+e.name); player.flags.bossDefeated[e.key] = true; }
+    const z = currentZone();
+    if(z.repFaction && e.hostile && !e.isBoss){
+      adjRep(z.repFaction, e.r>=16 ? 2 : 1);
+    }
+    progressQuest('kill', e.key);
+    if(e.respawns){
+      setTimeout(()=>{ e.hp=e.maxHp; e.dead=false; e.x=e.anchorX; e.y=e.anchorY; e.state='idle'; }, 8000);
+    }
+  }
+}
+
+/* ---------------- 스킬 ---------------- */
+function useSkill(n){
+  if(dialogueOpen || finaleActive) return;
+  if(n===1){
+    if(player.potion<=0){ toast('회복약이 없다'); return; }
+    player.potion--; player.hp = clamp(player.hp+35,0,player.maxHp);
+    floatText(player.x, player.y-30, '+35', '#7fd9c9');
+  } else if(n===2){
+    if(player.skillCooldowns.dash>0) return;
+    player.skillCooldowns.dash = 4;
+    const z = currentZone();
+    const oldX = player.x, oldY = player.y;
+    const fx = Math.cos(player.facing), fy = Math.sin(player.facing);
+    let newX = oldX + fx*150, newY = oldY + fy*150;
+    newX = clamp(newX, player.r, z.w-player.r);
+    newY = clamp(newY, player.r, z.h-player.r);
+    z.buildings.forEach(b=>{
+      const p = circleRectPush(newX, newY, player.r, b);
+      if(p){ newX=p.x; newY=p.y; }
+    });
+    // 돌진 경로 전체를 스윕 판정하여, 순간이동 중 지나친 적도 정확히 타격한다.
+    const hitWidth = 46;
+    const dmg = Math.round(player.dmg * 1.4 * (player.perfectWindow>0 ? 2 : 1));
+    player.perfectWindow = 0;
+    let hitAny = false;
+    z.enemies.forEach(e=>{
+      if(e.dead) return;
+      if(pointSegDist(e.x, e.y, oldX, oldY, newX, newY) < hitWidth + e.r){
+        if(e.key==='transGyun' && !e.definedAsEnemy){
+          e.definedAsEnemy = false; // 돌진베기는 초균을 재정의하지 못한다 (전용 스킬만 가능)
+        }
+        damageEnemy(e, dmg);
+        hitAny = true;
+      }
+    });
+    if(z.gyun && z.gyun.visible && pointSegDist(z.gyun.x, z.gyun.y, oldX, oldY, newX, newY) < hitWidth+15){
+      floatText(z.gyun.x, z.gyun.y-20, '균에게는 통하지 않는다', '#c22a56');
+      player.corruption = clamp(player.corruption+1,0,100);
+    }
+    player.x = newX; player.y = newY;
+    player.attackCooldown = 0.2;
+    floatText(player.x, player.y-20, hitAny ? '돌진베기 명중!' : '돌진베기!', '#e0c464');
+  } else if(n===3){
+    if(player.corruption<50){ toast('균화율 50% 이상 필요'); return; }
+    if(player.skillCooldowns.gyun>0) return;
+    player.skillCooldowns.gyun = 6;
+    doAttack(100, 2.2, 0.3, 'gyunkyeok');
+    player.corruption = clamp(player.corruption+5,0,100);
+    floatText(player.x, player.y-20, '균격!', '#c22a56');
+  } else if(n===4){
+    if(player.level<5){ toast('레벨 5 이상 필요'); return; }
+    if(player.skillCooldowns.ult>0) return;
+    player.skillCooldowns.ult = 15;
+    const z = currentZone();
+    z.enemies.forEach(e=>{ if(!e.dead && dist(player,e)<180) damageEnemy(e, Math.round(player.dmg*2.5)); });
+    floatText(player.x, player.y-20, '경계절단!', '#c22a56');
+  }
+}
+
+/* ---------------- 회피 ---------------- */
+function tryDodge(){
+  if(dialogueOpen || finaleActive) return;
+  if(player.dodgeCooldown>0 || player.stamina<20) return;
+  player.stamina -= 20;
+  player.dodgeCooldown = 0.6;
+  player.dodging = 0.22;
+  player.invuln = 0.22;
+  let mx=0,my=0;
+  if(keys['w']) my-=1; if(keys['s']) my+=1; if(keys['a']) mx-=1; if(keys['d']) mx+=1;
+  if(mx===0 && my===0){ mx=touchVector.x; my=touchVector.y; }
+  if(mx===0 && my===0){ mx=Math.cos(player.facing); my=Math.sin(player.facing); }
+  const len = Math.hypot(mx,my)||1;
+  player.dodgeVec = {x:mx/len, y:my/len};
+  const z = currentZone();
+  let perfect = false;
+  z.enemies.forEach(e=>{
+    if(!e.dead && e.state==='windup' && dist(player,e) < (e.r+40) && e.attackTimer > (e.windupTime-0.2)){ perfect = true; }
+  });
+  if(perfect){
+    player.perfectWindow = 1.2;
+    toast('PERFECT DODGE!');
+    timeScale = 0.35;
+    setTimeout(()=> timeScale = 1, 260);
+  }
+}
+
+/* ============================================================
+   대화 시스템
+============================================================ */
+let dialogueOpen = false;
+let dialogueTarget = null, dialogueIdx = 0;
+function openDialogue(npc){
+  dialogueOpen = true; dialogueTarget = npc; dialogueIdx = 0;
+  if(npc.mainFlag){ player.flags[npc.mainFlag] = true; }
+  document.getElementById('dialogueBox').classList.remove('hidden');
+  document.getElementById('interactPrompt').classList.add('hidden');
+  showDialogueLine();
+}
+function showDialogueLine(){
+  const npc = dialogueTarget;
+  document.getElementById('dialogueName').textContent = npc.name;
+  const lines = npc.dialogue;
+  const opts = document.getElementById('dialogueOptions');
+  opts.innerHTML = '';
+  if(dialogueIdx < lines.length){
+    document.getElementById('dialogueText').textContent = lines[dialogueIdx];
+    document.getElementById('dialogueHint').textContent = 'F : 다음';
+    return;
+  }
+  document.getElementById('dialogueText').textContent = '';
+  document.getElementById('dialogueHint').textContent = '버튼을 클릭하거나 F로 닫기';
+
+  const npcQuests = npc.quests || (npc.questOffer ? [npc.questOffer] : []);
+  npcQuests.forEach(qid=>{
+    const def = QUESTS[qid];
+    const q = player.quests[qid];
+    if(!q){
+      if(def.requires && !(player.quests[def.requires] && player.quests[def.requires].turnedIn)) return;
+      const btn = document.createElement('button');
+      btn.textContent = '퀘스트 수락: ' + def.title;
+      btn.onclick = ()=>{
+        acceptQuest(qid);
+        if(def.need.type==='talk'){ progressQuest('talk', def.need.npc); turnInQuest(qid); }
+        closeDialogue();
+      };
+      opts.appendChild(btn);
+    } else if(q.complete && !q.turnedIn){
+      const btn = document.createElement('button');
+      btn.textContent = '퀘스트 완료 보고: ' + def.title;
+      btn.onclick = ()=>{ turnInQuest(qid); closeDialogue(); };
+      opts.appendChild(btn);
+    }
+  });
+
+  if(npc.isShop){
+    const btn = document.createElement('button');
+    btn.textContent = '회복약 구매 (골드 10)';
+    btn.onclick = ()=>{
+      if(player.gold>=10){ player.gold-=10; player.potion++; toast('회복약 구매'); } else { toast('골드 부족'); }
+      closeDialogue();
+    };
+    opts.appendChild(btn);
+  }
+  if(npc.isRecruiter && !player.flags.sodJoined){
+    const btn = document.createElement('button');
+    btn.textContent = '가입한다';
+    btn.onclick = ()=>{ player.flags.sodJoined=true; adjRep('sod',30); toast('Sod에 가입했다.'); closeDialogue(); };
+    opts.appendChild(btn);
+    const btn2 = document.createElement('button');
+    btn2.textContent = '거절한다';
+    btn2.onclick = ()=>{ adjRep('sod',5); closeDialogue(); };
+    opts.appendChild(btn2);
+  }
+  if(npc.isMugyunChoice && !player.flags.mugyunChoiceMade){
+    const btn = document.createElement('button');
+    btn.textContent = '그 논리를 이해하려 노력한다';
+    btn.onclick = ()=>{ player.flags.mugyunChoiceMade=true; adjRep('mugyun',20); closeDialogue(); };
+    opts.appendChild(btn);
+    const btn2 = document.createElement('button');
+    btn2.textContent = '위험한 발상이라고 맞선다';
+    btn2.onclick = ()=>{ player.flags.mugyunChoiceMade=true; adjRep('mugyun',-20); adjRep('gyunkyo',15); closeDialogue(); };
+    opts.appendChild(btn2);
+  }
+  if(npc.teachesGyunEo && !player.flags.gyunEoLearned){
+    const btn = document.createElement('button');
+    btn.textContent = '균어를 배운다';
+    btn.onclick = ()=>{ player.flags.gyunEoLearned = true; adjRep('gyunkyo',15); toast('균어를 습득했다.'); closeDialogue(); };
+    opts.appendChild(btn);
+  }
+  if(npc.isAnomaly){ player.observation = clamp(player.observation+5,0,100); }
+
+  if(npc.isFactionVendor){
+    const fac = npc.isFactionVendor;
+    const perks = FACTION_PERKS[fac];
+    let shown = false;
+    perks.forEach((perk, idx)=>{
+      const pkey = fac+'-'+idx;
+      if(player.perksBought[pkey]) return;
+      if(player.rep[fac] >= perk.repReq){
+        shown = true;
+        const btn = document.createElement('button');
+        btn.textContent = `특전 구매: ${perk.desc} (골드 ${perk.cost})`;
+        btn.onclick = ()=>{
+          if(player.gold < perk.cost){ toast('골드가 부족하다.'); return; }
+          player.gold -= perk.cost;
+          perk.apply(player);
+          player.perksBought[pkey] = true;
+          toast('영구 특전 획득: ' + perk.desc);
+          closeDialogue();
+        };
+        opts.appendChild(btn);
+      }
+    });
+    if(!shown){
+      const nextPerk = perks.find((p,idx)=> !player.perksBought[fac+'-'+idx]);
+      if(nextPerk){
+        const div = document.createElement('div');
+        div.className='lockedNote';
+        div.textContent = `[특전 잠김] 평판 ${nextPerk.repReq} 이상 필요 (현재 ${player.rep[fac]})`;
+        opts.appendChild(div);
+      }
+    }
+  }
+}
+function advanceDialogue(){
+  if(dialogueIdx < dialogueTarget.dialogue.length){ dialogueIdx++; showDialogueLine(); }
+  else { closeDialogue(); }
+}
+function closeDialogue(){
+  dialogueOpen = false;
+  document.getElementById('dialogueBox').classList.add('hidden');
+}
+function doInteract(){
+  if(finaleActive) return;
+  if(dialogueOpen){ advanceDialogue(); }
+  else {
+    const n = findInteractable();
+    if(n) openDialogue(n);
+  }
+}
+
+/* ============================================================
+   상호작용 대상 탐색
+============================================================ */
+function findInteractable(){
+  const z = currentZone();
+  let best=null, bestD=70;
+  z.npcs.forEach(n=>{ const d=dist(player,n); if(d<bestD){ best=n; bestD=d; } });
+  return best;
+}
+
+/* ============================================================
+   업데이트 루프
+============================================================ */
+let timeScale = 1;
+let lastTime = performance.now();
+let dayTime = 0;
+let finaleActive = false;
+let touchVector = {x:0,y:0};
+
+function update(dt){
+  dt *= timeScale;
+  dayTime = (dayTime + dt/180) % 1;
+  const nightAmt = Math.max(0, Math.sin(dayTime*Math.PI*2 - Math.PI/2))*0.55;
+  document.getElementById('nightOverlay').style.opacity = nightAmt.toFixed(2);
+
+  if(finaleActive) return;
+
+  const idleSec = (performance.now()-lastIdleAt)/1000;
+  if(idleSec>4 && !dialogueOpen){ player.boredom = clamp(player.boredom + dt*10, 0, 100); }
+  else { player.boredom = clamp(player.boredom - dt*4, 0, 100); }
+  if(player.boredom>=100){
+    player.boredom = 45;
+    player.corruption = clamp(player.corruption+4,0,100);
+    floatText(player.x, player.y-40, '균균균균균.', '#c22a56');
+    const z = currentZone();
+    z.enemies.forEach(e=>{ if(!e.dead && Math.random()<0.4){ e.x += rnd(-60,60); e.y += rnd(-60,60); } });
+  }
+
+  if(dialogueOpen){ updateHud(); return; }
+
+  updatePlayer(dt);
+  updateGyun(dt);
+  updateEnemies(dt);
+  updateFloaters(dt);
+  updateCamera();
+  checkPortals();
+  checkFinaleTrigger();
+  updateInteractPrompt();
+  updateHud();
+}
+
+function updatePlayer(dt){
+  player.attackCooldown = Math.max(0, player.attackCooldown-dt);
+  player.comboTimer = Math.max(0, player.comboTimer-dt);
+  player.dodgeCooldown = Math.max(0, player.dodgeCooldown-dt);
+  player.invuln = Math.max(0, player.invuln-dt);
+  player.dodging = Math.max(0, player.dodging-dt);
+  player.perfectWindow = Math.max(0, (player.perfectWindow||0)-dt);
+  Object.keys(player.skillCooldowns).forEach(k=> player.skillCooldowns[k] = Math.max(0, player.skillCooldowns[k]-dt));
+
+  if(player.dodging>0){
+    player.x += player.dodgeVec.x * 620 * dt;
+    player.y += player.dodgeVec.y * 620 * dt;
+  } else {
+    let mx=0,my=0;
+    if(keys['w']) my-=1; if(keys['s']) my+=1; if(keys['a']) mx-=1; if(keys['d']) mx+=1;
+    if(mx===0 && my===0 && (touchVector.x!==0 || touchVector.y!==0)){ mx=touchVector.x; my=touchVector.y; }
+    const moving = mx!==0||my!==0;
+    if(moving){
+      const len = Math.hypot(mx,my);
+      mx/=len; my/=len;
+      const running = keys['shift'] && player.stamina>0;
+      const spd = player.speed * (running?1.55:1);
+      player.x += mx*spd*dt; player.y += my*spd*dt;
+      player.facing = Math.atan2(my,mx);
+      if(running){ player.stamina = clamp(player.stamina-dt*14,0,player.maxStamina); }
+      else { player.stamina = clamp(player.stamina+dt*10,0,player.maxStamina); }
+    } else {
+      player.stamina = clamp(player.stamina+dt*16,0,player.maxStamina);
+      if(!isTouchDevice){
+        const mw = screenToWorld(mouseScreen);
+        player.facing = angleTo(player, mw);
+      }
+    }
+  }
+
+  const z = currentZone();
+  player.x = clamp(player.x, player.r, z.w-player.r);
+  player.y = clamp(player.y, player.r, z.h-player.r);
+  z.buildings.forEach(b=>{
+    const p = circleRectPush(player.x, player.y, player.r, b);
+    if(p){ player.x=p.x; player.y=p.y; }
+  });
+
+  if(keys[' ']){ tryDodge(); keys[' ']=false; }
+  if(keys['1']){ useSkill(1); keys['1']=false; }
+  if(keys['2']){ useSkill(2); keys['2']=false; }
+  if(keys['3']){ useSkill(3); keys['3']=false; }
+  if(keys['4']){ useSkill(4); keys['4']=false; }
+}
+
+function screenToWorld(s){ return {x:s.x+camera.x, y:s.y+camera.y}; }
+function worldToScreen(w){ return {x:w.x-camera.x, y:w.y-camera.y}; }
+
+function updateInteractPrompt(){
+  const el = document.getElementById('interactPrompt');
+  const n = findInteractable();
+  if(!n){ el.classList.add('hidden'); return; }
+  const s = worldToScreen(n);
+  el.style.left = s.x+'px';
+  el.style.top = (s.y-(n.r||14)-14)+'px';
+  el.textContent = 'F : ' + (n.isBoard ? '게시판 확인' : (n.name+'와(과) 대화'));
+  el.classList.remove('hidden');
+}
+
+function updateGyun(dt){
+  const z = currentZone();
+  if(!z.gyun) return;
+  z.gyun.timer -= dt;
+  if(z.gyun.timer<=0){
+    z.gyun.timer = rnd(3,8);
+    if(Math.random()<0.5){ z.gyun.visible = false; }
+    else {
+      z.gyun.visible = true;
+      z.gyun.x = clamp(z.gyunAnchor.x + rnd(-260,260), 60, z.w-60);
+      z.gyun.y = clamp(z.gyunAnchor.y + rnd(-200,200), 60, z.h-60);
+    }
+  }
+  if(z.gyun.visible){
+    const d = dist(player, z.gyun);
+    const ang = angleTo(player, z.gyun);
+    let diff = Math.abs(ang-player.facing); diff = Math.min(diff, Math.PI*2-diff);
+    if(d<220 && diff<0.6){ player.observation = clamp(player.observation + dt*6, 0, 100); }
+  }
+}
+
+function updateEnemies(dt){
+  const z = currentZone();
+  z.enemies.forEach(e=>{
+    if(e.dead){ e.deadTimer -= dt; return; }
+    e.hitFlash = Math.max(0, e.hitFlash-dt);
+    e.stateTimer -= dt;
+    const d = dist(player, e);
+
+    if(!e.hostile){
+      if(e.immobile) return;
+      if(e.stateTimer<=0){ e.wanderTarget = {x: e.anchorX+rnd(-80,80), y: e.anchorY+rnd(-80,80)}; e.stateTimer = rnd(2,4); }
+      if(e.wanderTarget){
+        const a = angleTo(e, e.wanderTarget);
+        e.x += Math.cos(a)*e.speed*0.5*dt; e.y += Math.sin(a)*e.speed*0.5*dt;
+        e.facing = a;
+      }
+      return;
+    }
+
+    switch(e.state){
+      case 'idle':
+        if(!e.immobile && e.stateTimer<=0){
+          e.wanderTarget = {x: e.anchorX+rnd(-100,100), y: e.anchorY+rnd(-100,100)};
+          e.stateTimer = rnd(2,4);
+        }
+        if(e.wanderTarget && !e.immobile){
+          const a = angleTo(e, e.wanderTarget);
+          e.x += Math.cos(a)*e.speed*0.4*dt; e.y += Math.sin(a)*e.speed*0.4*dt;
+          e.facing = a;
+        }
+        if(d < e.aggro){ e.state='alert'; e.stateTimer=0.35; }
+        break;
+      case 'alert':
+        e.facing = angleTo(e, player);
+        if(e.stateTimer<=0) e.state='chase';
+        break;
+      case 'chase':
+        e.facing = angleTo(e, player);
+        if(d > (e.r+player.r+42)){
+          e.x += Math.cos(e.facing)*e.speed*dt; e.y += Math.sin(e.facing)*e.speed*dt;
+        } else {
+          e.state='windup'; e.stateTimer=0; e.attackTimer=0; e.windupTime = e.isBoss?0.9:0.5;
+        }
+        if(d > e.aggro*1.6){ e.state='idle'; }
+        break;
+      case 'windup':
+        e.attackTimer += dt;
+        e.facing = angleTo(e, player);
+        if(e.attackTimer >= e.windupTime){
+          e.state='attack'; e.stateTimer=0.12;
+          const dd = dist(player,e);
+          const range = e.isBoss ? 130 : (e.r+player.r+30);
+          if(dd < range && player.invuln<=0){
+            player.hp = clamp(player.hp - e.dmg, 0, player.maxHp);
+            floatText(player.x, player.y-24, '-'+e.dmg, '#ff6a6a');
+          }
+        }
+        break;
+      case 'attack':
+        if(e.stateTimer<=0){ e.state='chase'; }
+        break;
+    }
+
+    if(e.isBoss){
+      if(!e.phase2 && e.hp < e.maxHp*0.5){ e.phase2=true; e.speed*=1.3; toast(e.name+' 이(가) 격앙되었다!'); }
+      if(!e.noSummon){
+        e.summonCd -= dt;
+        if(e.summonCd<=0){
+          e.summonCd = e.phase2?4:7;
+          z.enemies.push(makeEnemy('error', e.x+rnd(-60,60), e.y+rnd(-60,60)));
+        }
+      }
+    }
+  });
+  z.enemies = z.enemies.filter(e=> !(e.dead && e.deadTimer<=0));
+
+  if(player.hp<=0){
+    player.hp = Math.round(player.maxHp*0.5);
+    player.stamina = player.maxStamina;
+    player.x = z.w/2; player.y = z.h/2;
+    toast('쓰러졌다가 다시 일어났다.');
+  }
+}
+
+function updateFloaters(dt){
+  floaters.forEach(f=>{ f.y -= 30*dt; f.life -= dt*0.9; });
+  floaters = floaters.filter(f=> f.life>0);
+}
+
+function updateCamera(){
+  const z = currentZone();
+  camera.x = clamp(player.x - canvas.width/2, 0, Math.max(0,z.w-canvas.width));
+  camera.y = clamp(player.y - canvas.height/2, 0, Math.max(0,z.h-canvas.height));
+  if(z.w < canvas.width) camera.x = -(canvas.width-z.w)/2;
+  if(z.h < canvas.height) camera.y = -(canvas.height-z.h)/2;
+}
+
+function checkPortals(){
+  const z = currentZone();
+  z.portals.forEach(p=>{
+    if(p.locked && !player.flags.gyungyeUnlocked) return;
+    if(player.x>p.r.x && player.x<p.r.x+p.r.w && player.y>p.r.y && player.y<p.r.y+p.r.h){
+      enterZone(p.target, p.spawn);
+    }
+  });
+}
+function checkFinaleTrigger(){
+  const z = currentZone();
+  if(z.finaleTrigger && !player.flags.endingDone){
+    const t = z.finaleTrigger;
+    if(player.x>t.x && player.x<t.x+t.w && player.y>t.y && player.y<t.y+t.h){ startFinale(); }
+  }
+}
+
+/* ============================================================
+   HUD 갱신
+============================================================ */
+function updateHud(){
+  document.getElementById('hpFill').style.width = (player.hp/player.maxHp*100)+'%';
+  document.getElementById('staFill').style.width = (player.stamina/player.maxStamina*100)+'%';
+  document.getElementById('obsVal').textContent = player.observation>=90 ? '?' : Math.round(player.observation);
+  document.getElementById('corVal').textContent = player.corruption>=90 ? '?' : Math.round(player.corruption)+'%';
+  document.getElementById('borVal').textContent = Math.round(player.boredom)+'%';
+  document.getElementById('lvVal').textContent = player.level;
+  document.getElementById('xpVal').textContent = Math.round(player.xp)+'/'+player.xpNext;
+  document.getElementById('goldVal').textContent = player.gold;
+  document.getElementById('potionVal').textContent = player.potion;
+  checkSodPromotion();
+  document.getElementById('rankVal').textContent = player.flags.sodJoined ? (' · Sod: '+SOD_RANKS[player.sodRankIdx].name) : '';
+
+  document.getElementById('slot3').classList.toggle('locked', player.corruption<50);
+  document.getElementById('slot2').classList.toggle('ready', player.skillCooldowns.dash<=0);
+  document.getElementById('slot3').classList.toggle('ready', player.corruption>=50 && player.skillCooldowns.gyun<=0);
+  document.getElementById('slot4').classList.toggle('ready', player.level>=5 && player.skillCooldowns.ult<=0);
+
+  document.getElementById('glitchbar').style.opacity = player.observation>90 ? 1 : 0;
+  canvas.style.filter = player.corruption>60 ? `hue-rotate(${(player.corruption-60)*2}deg) saturate(${1+player.corruption/120})` : 'none';
+
+  renderMainQuest();
+  checkCodexUnlocks();
+  drawMinimap();
+}
+
+function drawMinimap(){
+  const mc = document.getElementById('minimap');
+  const mctx = mc.getContext('2d');
+  mctx.clearRect(0,0,170,170);
+  const z = currentZone();
+  const sx = 170/z.w, sy = 170/z.h;
+  mctx.fillStyle = 'rgba(255,255,255,0.04)'; mctx.fillRect(0,0,170,170);
+  z.buildings.forEach(b=>{ mctx.fillStyle = 'rgba(255,255,255,0.08)'; mctx.fillRect(b.x*sx, b.y*sy, b.w*sx, b.h*sy); });
+  z.portals.forEach(p=>{
+    const locked = p.locked && !player.flags.gyungyeUnlocked;
+    mctx.fillStyle = locked ? '#5a4a2a' : '#e0c464';
+    mctx.fillRect(p.r.x*sx, p.r.y*sy, Math.max(3,p.r.w*sx), Math.max(3,p.r.h*sy));
+  });
+  z.npcs.forEach(n=>{ mctx.fillStyle = '#7ea1e6'; mctx.beginPath(); mctx.arc(n.x*sx, n.y*sy, 2.5, 0, 7); mctx.fill(); });
+  z.enemies.forEach(e=>{
+    if(e.dead) return;
+    mctx.fillStyle = e.isBoss ? '#d9b64f' : (e.hostile?'#c22a56':'#8f6fb0');
+    mctx.beginPath(); mctx.arc(e.x*sx, e.y*sy, e.isBoss?4:2.5, 0, 7); mctx.fill();
+  });
+  mctx.fillStyle = '#eae6da'; mctx.beginPath(); mctx.arc(player.x*sx, player.y*sy, 3.5, 0, 7); mctx.fill();
+}
+
+/* ============================================================
+   렌더링
+============================================================ */
+function render(){
+  const z = currentZone();
+  ctx.fillStyle = z.ground; ctx.fillRect(0,0,canvas.width, canvas.height);
+  ctx.save(); ctx.translate(-camera.x, -camera.y);
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)'; ctx.lineWidth = 1;
+  for(let gx=0; gx<z.w; gx+=100){ ctx.beginPath(); ctx.moveTo(gx,0); ctx.lineTo(gx,z.h); ctx.stroke(); }
+  for(let gy=0; gy<z.h; gy+=100){ ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(z.w,gy); ctx.stroke(); }
+
+  z.buildings.forEach(b=>{
+    ctx.fillStyle = z.bg; ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.fillRect(b.x,b.y,b.w,b.h); ctx.strokeRect(b.x,b.y,b.w,b.h);
+  });
+  z.portals.forEach(p=>{
+    const locked = p.locked && !player.flags.gyungyeUnlocked;
+    ctx.fillStyle = locked ? 'rgba(120,100,60,0.25)' : 'rgba(224,196,100,0.28)';
+    ctx.fillRect(p.r.x,p.r.y,p.r.w,p.r.h);
+    ctx.strokeStyle = locked ? '#5a4a2a' : '#e0c464';
+    ctx.strokeRect(p.r.x,p.r.y,p.r.w,p.r.h);
+  });
+  if(z.finaleTrigger){
+    ctx.fillStyle = 'rgba(194,42,86,0.18)'; ctx.fillRect(z.finaleTrigger.x,z.finaleTrigger.y,z.finaleTrigger.w,z.finaleTrigger.h);
+    ctx.strokeStyle = '#c22a56'; ctx.strokeRect(z.finaleTrigger.x,z.finaleTrigger.y,z.finaleTrigger.w,z.finaleTrigger.h);
+  }
+  z.npcs.forEach(n=> drawEntity(n.x, n.y, n.r, n.color, n.name, 0, null));
+  z.enemies.forEach(e=>{
+    if(e.dead && e.deadTimer<=0) return;
+    const alpha = e.dead ? clamp(e.deadTimer/0.6,0,1) : 1;
+    ctx.globalAlpha = alpha;
+    let col = e.hitFlash>0 ? '#ffffff' : e.color;
+    drawEntity(e.x, e.y, e.r, col, (e.isBoss?'★ ':'')+e.name, e.facing, e.hp<e.maxHp?{hp:e.hp,max:e.maxHp}:null);
+    if(e.state==='windup'){
+      const p2 = e.attackTimer/e.windupTime;
+      ctx.strokeStyle = 'rgba(255,80,80,'+(0.3+0.5*p2)+')'; ctx.lineWidth = 2;
+      const rr = e.isBoss ? 130*p2 : (e.r+player.r+30)*p2;
+      ctx.beginPath(); ctx.arc(e.x,e.y,rr,0,7); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  });
+  if(z.gyun && z.gyun.visible){
+    ctx.save(); ctx.globalAlpha = 0.92;
+    const grad = ctx.createRadialGradient(z.gyun.x,z.gyun.y,2,z.gyun.x,z.gyun.y,26);
+    grad.addColorStop(0,'#1a1a1a'); grad.addColorStop(1,'rgba(194,42,86,0.15)');
+    ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(z.gyun.x,z.gyun.y,26,0,7); ctx.fill();
+    ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(z.gyun.x,z.gyun.y,13,0,7); ctx.fill();
+    ctx.strokeStyle = '#c22a56'; ctx.lineWidth=1; ctx.stroke();
+    ctx.fillStyle = '#c22a56'; ctx.font='11px monospace'; ctx.textAlign='center';
+    ctx.fillText('균', z.gyun.x, z.gyun.y-22);
+    ctx.restore();
+  }
+  drawEntity(player.x, player.y, player.r, player.invuln>0?'#ffffff':'#eae6da', player.name||'', player.facing, null, true);
+  floaters.forEach(f=>{
+    ctx.globalAlpha = clamp(f.life,0,1);
+    ctx.fillStyle = f.color; ctx.font='13px monospace'; ctx.textAlign='center';
+    ctx.fillText(f.text, f.x, f.y);
+    ctx.globalAlpha = 1;
+  });
+  ctx.restore();
+}
+
+function drawEntity(x,y,r,color,label,facing,hpInfo,isPlayer){
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth=2; ctx.stroke();
+  ctx.strokeStyle = isPlayer ? '#c22a56' : 'rgba(0,0,0,0.5)'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+Math.cos(facing)*(r+8), y+Math.sin(facing)*(r+8)); ctx.stroke();
+  if(label){
+    ctx.fillStyle = 'rgba(234,230,218,0.85)'; ctx.font='11px monospace'; ctx.textAlign='center';
+    ctx.fillText(label, x, y-r-10);
+  }
+  if(hpInfo){
+    const w=40;
+    ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(x-w/2,y-r-8,w,5);
+    ctx.fillStyle='#c22a56'; ctx.fillRect(x-w/2,y-r-8,w*(hpInfo.hp/hpInfo.max),5);
+  }
+  ctx.restore();
+}
+
+/* ============================================================
+   파이널 시퀀스
+============================================================ */
+function startFinale(){
+  finaleActive = true;
+  player.flags.endingDone = true;
+  const el = document.getElementById('finaleOverlay');
+  el.classList.remove('hidden'); el.classList.add('show');
+  document.getElementById('hud').style.opacity = '0';
+  document.getElementById('interactPrompt').classList.add('hidden');
+  document.getElementById('finaleChoices').style.display='none';
+  const lines = [
+    '모든 현실이 정지한다.',
+    '임루아 : "너는 무엇인가?"',
+    '균 : "균?"',
+    '임루아 : "세계의 오류인가?"　균 : "균."',
+    '임루아 : "세계의 일부인가?"　균 : "균."',
+    '임루아 : "세계 그 자체인가?"',
+    '긴 침묵.',
+    '균 : "균균균균균."',
+    '임루아는 검을 내린다. 당신에게는 선택지가 없다.',
+    '...그러나 세계는 당신에게 마지막으로 묻는다.'
+  ];
+  playLines(lines, 0, showFinalChoice);
+}
+function playLines(lines, i, done){
+  const el = document.getElementById('finaleText');
+  if(i>=lines.length){ done(); return; }
+  el.style.opacity = 0;
+  setTimeout(()=>{
+    el.textContent = lines[i];
+    el.style.transition = 'opacity 0.8s ease';
+    el.style.opacity = 1;
+    setTimeout(()=> playLines(lines, i+1, done), 2400);
+  }, 200);
+}
+function showFinalChoice(){
+  document.getElementById('finaleText').textContent = '당신은 무엇을 선택하는가.';
+  const wrap = document.getElementById('finaleChoices');
+  wrap.innerHTML=''; wrap.style.display='flex';
+  const opts = [
+    {label:'무균 — 균의 영향을 제거한다', key:'mugyun'},
+    {label:'균 — 균을 받아들인다', key:'gyun'},
+    {label:'균형 — 둘 다 유지한다', key:'balance'}
+  ];
+  opts.forEach(o=>{
+    const b = document.createElement('button');
+    b.textContent = o.label;
+    b.onclick = ()=> resolveFinale(o.key);
+    wrap.appendChild(b);
+  });
+}
+function resolveFinale(choice){
+  document.getElementById('finaleChoices').style.display='none';
+  let ending;
+  const stdRep = (()=>{
+    const vals = Object.values(player.rep);
+    const mean = vals.reduce((a,b)=>a+b,0)/vals.length;
+    return Math.sqrt(vals.reduce((a,b)=>a+(b-mean)**2,0)/vals.length);
+  })();
+  if(choice==='mugyun') ending = 'A — 완전한 질서';
+  else if(choice==='gyun') ending = 'B — 균의 세계';
+  else ending = (stdRep<=35 && player.flags.gyunEoLearned) ? 'Ω — 균균균균균 (진엔딩)' : 'C — 세력 균형';
+
+  const lines = [
+    '세계가 재구성된다.',
+    'ENDING : ' + ending,
+    'Sod는 계속 신격과 초월체를 감시한다.',
+    '임루아의 검은 계속 경계를 관리한다.',
+    '무균회는 균과 무균의 균형을 감시한다.',
+    '기록관은 세계의 역사를 기록한다.',
+    '균은 여전히 존재한다. 그러나 더 이상 세계의 중심에 서 있지 않는다.',
+    '최종 질문 : "균은 세계 안에 있는가, 아니면 세계가 균을 설명하기 위해 만들어진 것인가?"',
+    '공식 답변 : 확정되지 않았다.'
+  ];
+  playLines(lines, 0, ()=>{
+    document.getElementById('finaleText').innerHTML = '';
+    const big = document.createElement('div');
+    big.id='finaleFinal'; big.textContent = '균멘.';
+    document.getElementById('finaleText').appendChild(big);
+    setTimeout(()=>{ big.textContent='균멘.\n균균.'; },1500);
+    setTimeout(()=>{ big.textContent='균멘.\n균균.\n균균균.'; },3000);
+    setTimeout(()=>{ big.textContent='균멘.\n균균.\n균균균.\n균균균균균.'; },4500);
+    setTimeout(()=>{
+      finaleActive = false;
+      player.flags.postFinale = true;
+      document.getElementById('finaleOverlay').classList.remove('show');
+      setTimeout(()=> document.getElementById('finaleOverlay').classList.add('hidden'), 1200);
+      document.getElementById('hud').style.opacity = '1';
+      toast('세계는 계속된다.');
+      enterZone('city', {x:1000, y:1200});
+    }, 6800);
+  });
+}
+
+/* ============================================================
+   패널 토글 (세력 / 도움말)
+============================================================ */
+document.getElementById('factionBtn').addEventListener('click', toggleFaction);
+document.getElementById('codexBtn').addEventListener('click', toggleCodex);
+function toggleFaction(){ document.getElementById('factionPanel').classList.toggle('hidden'); }
+function toggleCodex(){ renderCodex(); document.getElementById('codexPanel').classList.toggle('hidden'); }
+function toggleHelp(){ document.getElementById('helpOverlay').classList.toggle('hidden'); }
+window.addEventListener('keydown', e=>{
+  const k = e.key.toLowerCase();
+  if(k==='c') toggleFaction();
+  if(k==='l') toggleCodex();
+  if(k==='h') toggleHelp();
+  if(k==='escape'){
+    document.getElementById('factionPanel').classList.add('hidden');
+    document.getElementById('codexPanel').classList.add('hidden');
+    document.getElementById('helpOverlay').classList.add('hidden');
+  }
+  if(k==='f' && !e.repeat && started){ e.preventDefault(); doInteract(); }
+});
+
+/* ============================================================
+   모바일 터치 컨트롤
+============================================================ */
+(function setupJoystick(){
+  const base = document.getElementById('joystickBase');
+  const knob = document.getElementById('joystickKnob');
+  let activeId = null, baseRect = null;
+  const maxR = 40;
+  function start(e){
+    const t = e.changedTouches[0];
+    activeId = t.identifier;
+    baseRect = base.getBoundingClientRect();
+    move(e); e.preventDefault();
+  }
+  function move(e){
+    if(activeId===null) return;
+    let t=null;
+    for(const touch of e.changedTouches){ if(touch.identifier===activeId){ t=touch; break; } }
+    if(!t) return;
+    const cx = baseRect.left+baseRect.width/2, cy = baseRect.top+baseRect.height/2;
+    let dx = t.clientX-cx, dy = t.clientY-cy;
+    const d = Math.hypot(dx,dy);
+    if(d>maxR){ dx = dx/d*maxR; dy = dy/d*maxR; }
+    knob.style.transform = `translate(${dx}px,${dy}px)`;
+    let nx = dx/maxR, ny = dy/maxR;
+    if(Math.hypot(nx,ny) < 0.15){ nx=0; ny=0; }
+    touchVector.x = nx; touchVector.y = ny;
+    e.preventDefault(); markActive();
+  }
+  function end(e){
+    for(const touch of e.changedTouches){ if(touch.identifier===activeId){ activeId=null; } }
+    if(activeId===null){ knob.style.transform='translate(0,0)'; touchVector.x=0; touchVector.y=0; }
+  }
+  base.addEventListener('touchstart', start, {passive:false});
+  base.addEventListener('touchmove', move, {passive:false});
+  base.addEventListener('touchend', end);
+  base.addEventListener('touchcancel', end);
+})();
+document.getElementById('btnDodge').addEventListener('touchstart', e=>{ e.preventDefault(); markActive(); tryDodge(); });
+document.getElementById('btnInteract').addEventListener('touchstart', e=>{ e.preventDefault(); markActive(); doInteract(); });
+(function setupAtkBtn(){
+  const atkBtn = document.getElementById('btnAttack');
+  let holdStart = 0;
+  atkBtn.addEventListener('touchstart', e=>{ e.preventDefault(); markActive(); holdStart = performance.now(); });
+  atkBtn.addEventListener('touchend', e=>{ e.preventDefault(); const held = performance.now()-holdStart; tryAttack(held>420); });
+})();
+[1,2,3,4].forEach(n=>{
+  const el = document.getElementById('slot'+n);
+  el.classList.add('clickable');
+  el.addEventListener('click', ()=> useSkill(n));
+  el.addEventListener('touchstart', e=>{ e.preventDefault(); useSkill(n); });
+});
+
+/* ============================================================
+   메인 루프
+============================================================ */
+let started = false;
+function loop(now){
+  const dt = Math.min((now-lastTime)/1000, 0.05);
+  lastTime = now;
+  if(started){ update(dt); render(); }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('nameInput').addEventListener('keydown', e=>{ if(e.key==='Enter') startGame(); });
+function startGame(){
+  const nm = document.getElementById('nameInput').value.trim();
+  player.name = nm || '이름없는자';
+  document.getElementById('titleScreen').style.display='none';
+  started = true;
+  lastTime = performance.now();
+  renderQuestTracker();
+  renderFactionPanel();
+  renderMainQuest();
+  toast(player.name+'(이)가 균균월드에 기록되었다.');
+}
+</script>
+</body>
+</html>
